@@ -71,6 +71,8 @@ Format: **Title** — body — buttons.
 - Results: **Run Report** — `You survived {t}` · `{n} pop-ups closed` · `{n} points` · `Best combo ×{n}` — [Share] [Retry] [Menu]
 - Results mode line: `Daily #{n} · ranked run` · `Daily #{n} · practice (ranked run: {t})` · `Endless` · `New personal best!`
 - Share: `Copied!` · `Clipboard said no. Copy it by hand:` · Countdown: `Next daily in {hh:mm:ss}`
+- Leaderboard (M5): window **HISCORES.TXT** — tabs `Today` · `Yesterday` — `Dialing up…` · `Nobody yet. Be the first to panic.` · `The leaderboard is out to lunch.` · `Your ranked run isn’t on the wall yet.`
+- Initials picker (M5): `Sign the wall` · `↑↓ letter · ←→ move · Enter to send` · [Send] · `Sending…` · `You’re #{n} today.` · `Nice try. Pick other letters.` · `Easy there. Too many tries today.` · `The server squinted at that run and said no.` · `No connection. We’ll retry next time.`
 - Title mode select: `D = Daily · E = Endless`
   - Daily: `Daily #{n}` — `Ranked. One shot. No pressure.` / `Ranked run done ({t}). Practice only.`
   - Endless: `Endless` — `Random seed. Local glory only.` / `Best {t}`

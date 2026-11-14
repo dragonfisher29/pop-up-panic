@@ -13,11 +13,27 @@ import { Renderer } from './render';
 import { dailySeed, dayKey, formatCountdown, msUntilNextDay, puzzleNumber } from './daily';
 import { ramStrip, shareText } from './share';
 import {
+  encodeInput,
+  fetchBoard,
+  newPicker,
+  pickerKey,
+  pickerTap,
+  submitScore,
+  type Board,
+  type LogEntry,
+  type Picker,
+} from './leaderboard';
+import {
+  clearPending,
   loadBest,
   loadDaily,
+  loadInitials,
+  loadPending,
   loadSettings,
   saveBest,
   saveDailyIfFirst,
+  saveInitials,
+  savePending,
   saveSettings,
   type DailyResult,
   type RunResult,
@@ -71,6 +87,16 @@ app.innerHTML = `
       </div>
       <p class="blink">${SYSTEM.titlePrompt}</p>
       <p class="hint">${SYSTEM.titleKeys}</p>
+      <div class="board-slot">
+        <section class="board" aria-label="${SYSTEM.boardTitle}">
+          <div class="board-tabs" role="tablist">
+            <button class="board-tab" type="button" role="tab" data-board="today">${SYSTEM.boardToday}</button>
+            <button class="board-tab" type="button" role="tab" data-board="yesterday">${SYSTEM.boardYesterday}</button>
+          </div>
+          <ol class="board-list"></ol>
+          <p class="board-note" role="status"></p>
+        </section>
+      </div>
     </div>
     <div class="screen boot-screen" hidden>
       <pre class="boot-log"></pre>
@@ -91,6 +117,23 @@ app.innerHTML = `
           <ul class="results-stats"><li class="results-closes"></li><li class="results-points"></li><li class="results-combo"></li></ul>
           <p class="results-strip" aria-label="RAM over the run"></p>
           <p class="results-next" hidden></p>
+          <div class="picker" tabindex="0" hidden aria-label="${SYSTEM.pickerPrompt}">
+            <p class="picker-prompt">${SYSTEM.pickerPrompt}</p>
+            <div class="wheels">
+              ${[0, 1, 2]
+                .map(
+                  (i) => `<div class="wheel" data-wheel="${i}">
+                <button class="btn wheel-up" type="button" tabindex="-1" aria-label="Previous letter">▲</button>
+                <span class="wheel-letter">A</span>
+                <button class="btn wheel-down" type="button" tabindex="-1" aria-label="Next letter">▼</button>
+              </div>`,
+                )
+                .join('')}
+              <button class="btn picker-send" type="button">${SYSTEM.pickerSend}</button>
+            </div>
+            <p class="picker-hint">${SYSTEM.pickerHint}</p>
+            <p class="picker-status" role="status"></p>
+          </div>
           <div class="results-copy" hidden><p>${SYSTEM.copyFailed}</p><textarea readonly rows="2"></textarea></div>
           <div class="results-actions">
             <button class="btn share" type="button">${SYSTEM.share}</button>
@@ -99,6 +142,10 @@ app.innerHTML = `
           </div>
           <p class="toast" role="status" hidden>${SYSTEM.copied}</p>
         </div>
+      </div>
+      <div class="dialog board-dialog" role="region" aria-labelledby="board-title">
+        <div class="titlebar"><span class="title" id="board-title">${SYSTEM.boardTitle}</span></div>
+        <div class="body board-slot"></div>
       </div>
     </div>
   </div>`;
@@ -114,6 +161,8 @@ const menu = $('.menu');
 const beginBtn = $<HTMLButtonElement>('.begin');
 const muteItem = $('[data-menu="mute"]');
 const about = $('.about');
+const pickerEl = $('.picker');
+const board = $('.board');
 
 const renderer = new Renderer({
   layer: $('.windows'),
@@ -146,6 +195,12 @@ let mode: Mode = 'daily';
 let runDay = dayKey(new Date());
 /** RAM (milli-percent) after every tick of the current run, for the share strip. */
 let ramSamples: number[] = [];
+/** Every input of the current run as `[tick, type, ...fields]`, ending with `[crashTick, 'end']`. */
+let inputLog: LogEntry[] = [];
+let boardTab: 'today' | 'yesterday' = 'today';
+let boardReq = 0;
+let picker: Picker = newPicker(null);
+let sending = false;
 let lastRun: RunResult | null = null;
 /** The day's ranked result when the last run was practice; null when the last run was ranked or Endless. */
 let rankedRun: DailyResult | null = null;
@@ -177,6 +232,7 @@ function showTitle(): void {
   paintTitle();
   show(titleScreen, true);
   $<HTMLButtonElement>(`.mode-${mode}`).focus();
+  enterBoard(titleScreen, 'today');
 }
 
 function pickMode(m: Mode): void {
@@ -197,7 +253,10 @@ function recordRun(): void {
   rankedRun = null;
   if (mode === 'daily') {
     const daily: DailyResult = { ...run, day: runDay };
-    if (!saveDailyIfFirst(daily)) rankedRun = loadDaily(runDay);
+    if (saveDailyIfFirst(daily)) {
+      inputLog.push([state.tick, 'end']);
+      savePending({ day: runDay, timeMs: run.timeMs, points: run.points, closes: run.closes, inputLog });
+    } else rankedRun = loadDaily(runDay);
   }
   isNewBest = saveBest(mode, run);
 }
@@ -242,6 +301,7 @@ function startRun(): void {
   state = createGame(seedFor(mode));
   prevState = state;
   ramSamples = [];
+  inputLog = [];
   hideShareUi();
   input.reset();
   input.enabled = true;
@@ -267,6 +327,10 @@ function showResults(): void {
   paintResults(countStart);
   show(results, true);
   $<HTMLButtonElement>('.retry').focus();
+  const daily = mode === 'daily';
+  show($('.board-dialog'), daily);
+  if (daily) enterBoard(results, runDay === dayKey(new Date()) ? 'today' : 'yesterday');
+  openPicker();
 }
 
 function onAnyKey(): void {
@@ -276,11 +340,13 @@ function onAnyKey(): void {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
+  // Held arrows spin the initials wheels; every other key ignores auto-repeat.
+  if (e.repeat && !(phase === 'results' && document.activeElement === pickerEl && e.key.startsWith('Arrow'))) return;
   if (e.key === 'Escape') closeMenu();
   if (phase === 'results') {
     // Enter/Space activate the focused button (Retry by default); Escape goes back to the title.
     if (e.key === 'Escape') showTitle();
+    else if (document.activeElement === pickerEl && onPickerKey(e.key)) e.preventDefault();
     return;
   }
   if (phase === 'title') {
@@ -457,6 +523,143 @@ async function share(): Promise<void> {
   }
 }
 
+// ---------- leaderboard ----------
+const yesterdayKey = (): string => dayKey(new Date(Date.now() - 86_400_000));
+
+/** Moves the one board element into the title screen or the results window, then loads it. */
+function enterBoard(host: HTMLElement, tab: 'today' | 'yesterday'): void {
+  host.querySelector('.board-slot')!.append(board);
+  boardTab = tab;
+  void retryPending().then(refreshBoard);
+}
+
+async function refreshBoard(): Promise<void> {
+  const req = ++boardReq;
+  for (const t of board.querySelectorAll<HTMLButtonElement>('.board-tab')) {
+    t.setAttribute('aria-selected', String(t.dataset.board === boardTab));
+  }
+  const day = boardTab === 'today' ? dayKey(new Date()) : yesterdayKey();
+  const list = $('.board-list');
+  const note = $('.board-note');
+  list.replaceChildren();
+  note.textContent = SYSTEM.boardLoading;
+  const me = loadInitials();
+  const b = await fetchBoard(day, me);
+  if (req !== boardReq) return; // a newer refresh started
+  if (!b) {
+    note.textContent = SYSTEM.boardOffline;
+    return;
+  }
+  paintBoard(b);
+  note.textContent = b.top.length === 0 ? SYSTEM.boardEmpty : loadPending(day) ? SYSTEM.boardUnsent : '';
+}
+
+function paintBoard(b: Board): void {
+  const row = (r: Board['top'][number], mine: boolean): HTMLLIElement => {
+    const li = document.createElement('li');
+    li.className = mine ? 'board-row mine' : 'board-row';
+    li.innerHTML = `<span class="rank">${r.rank}</span><span class="who"></span><span class="time">${formatClock(r.timeMs)}</span>`;
+    li.querySelector('.who')!.textContent = r.initials;
+    return li;
+  };
+  const me = b.me;
+  const isMe = (r: Board['top'][number]) => me !== null && r.rank === me.rank && r.initials === me.initials;
+  const rows = b.top.map((r) => row(r, isMe(r)));
+  if (me && !b.top.some(isMe)) {
+    const gap = document.createElement('li');
+    gap.className = 'board-gap';
+    gap.textContent = '⋮';
+    rows.push(gap, row(me, true));
+  }
+  $('.board-list').replaceChildren(...rows);
+  $('.board-row.mine')?.scrollIntoView({ block: 'nearest' });
+}
+
+for (const t of board.querySelectorAll<HTMLButtonElement>('.board-tab')) {
+  t.addEventListener('click', () => {
+    boardTab = t.dataset.board as 'today' | 'yesterday';
+    void refreshBoard();
+  });
+}
+
+/** Silently sends any unsent ranked run (today's or yesterday's) when the initials are already known. */
+async function retryPending(): Promise<void> {
+  const initials = loadInitials();
+  if (!initials || sending) return;
+  for (const day of [dayKey(new Date()), yesterdayKey()]) {
+    if (phase === 'results' && day === runDay) continue; // the picker on screen handles this one
+    const p = loadPending(day);
+    if (!p) continue;
+    const r = await submitScore({ ...p, initials });
+    if (r.ok || r.reason !== 'offline') clearPending(day);
+  }
+}
+
+/** Shows the initials picker when this run's day still has an unsent ranked run. */
+function openPicker(): void {
+  const pending = mode === 'daily' ? loadPending(runDay) : null;
+  show(pickerEl, pending !== null);
+  if (!pending) return;
+  picker = newPicker(loadInitials());
+  $('.picker-status').textContent = '';
+  paintPicker();
+  pickerEl.focus();
+}
+
+function paintPicker(): void {
+  pickerEl.querySelectorAll<HTMLElement>('.wheel').forEach((w, i) => {
+    w.querySelector('.wheel-letter')!.textContent = picker.letters[i]!;
+    w.classList.toggle('on', i === picker.cursor);
+  });
+}
+
+function onPickerKey(key: string): boolean {
+  const r = pickerKey(picker, key);
+  const handled = r.picker !== picker || r.submit !== null || r.blocked;
+  picker = r.picker;
+  paintPicker();
+  if (r.blocked) $('.picker-status').textContent = SYSTEM.pickerBlocked;
+  if (r.submit) void sendRun(r.submit);
+  return handled;
+}
+
+async function sendRun(initials: string): Promise<void> {
+  const p = loadPending(runDay);
+  if (!p || sending) return;
+  sending = true;
+  const status = $('.picker-status');
+  status.textContent = SYSTEM.pickerSending;
+  saveInitials(initials);
+  const r = await submitScore({ ...p, initials });
+  sending = false;
+  if (r.ok) {
+    clearPending(runDay);
+    show(pickerEl, false);
+    $('.board-note').textContent = '';
+    $('.results-mode').textContent = `${$('.results-mode').textContent} · ${SYSTEM.pickerSent(r.rank)}`;
+    $<HTMLButtonElement>('.retry').focus();
+    void refreshBoard();
+    return;
+  }
+  if (r.reason !== 'offline') clearPending(runDay);
+  status.textContent = r.reason === 'rate' ? SYSTEM.pickerRate : r.reason === 'rejected' ? SYSTEM.pickerRejected : SYSTEM.pickerOffline;
+}
+
+pickerEl.querySelectorAll<HTMLElement>('.wheel').forEach((w, i) => {
+  const wheel = i as 0 | 1 | 2;
+  w.querySelector('.wheel-up')!.addEventListener('click', () => {
+    picker = pickerTap(picker, wheel, -1);
+    pickerEl.focus();
+    paintPicker();
+  });
+  w.querySelector('.wheel-down')!.addEventListener('click', () => {
+    picker = pickerTap(picker, wheel, 1);
+    pickerEl.focus();
+    paintPicker();
+  });
+});
+$('.picker-send').addEventListener('click', () => onPickerKey('Enter'));
+
 // ---------- loop ----------
 let last = performance.now();
 let acc = 0;
@@ -465,7 +668,9 @@ function frame(now: number): void {
     acc += now - last;
     let steps = 0;
     while (acc >= MS_PER_TICK && steps < MAX_STEPS_PER_FRAME) {
-      state = step(state, input.drain(state));
+      const ins = input.drain(state);
+      for (const i of ins) inputLog.push(encodeInput(state.tick, i));
+      state = step(state, ins);
       ramSamples.push(state.ram);
       acc -= MS_PER_TICK;
       steps++;
@@ -487,3 +692,5 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+enterBoard(titleScreen, 'today');
