@@ -20,7 +20,8 @@ export const FIRST_SPAWN_TICK = 30;
 /** Spawn interval eases from START to END over EASE_TICKS (ease-out), then holds. */
 export const SPAWN_INTERVAL_START_TICKS = 90; // 1500 ms
 export const SPAWN_INTERVAL_END_TICKS = 15; // 250 ms
-export const SPAWN_EASE_TICKS = 150 * TICK_HZ;
+/** SPEC §5 says 150 s; tuned to 120 s so the balance bot median lands in 90–140 s (150 s gave 152 s). */
+export const SPAWN_EASE_TICKS = 120 * TICK_HZ;
 
 /** Combo: a close within this many ticks of the previous close raises the combo. */
 export const COMBO_WINDOW_TICKS = 36; // 600 ms
@@ -63,13 +64,13 @@ export const UNLOCKS = [
 
 /** Base pick weight per hostile kind. */
 export const KIND_WEIGHT = {
-  ad: 10,
+  ad: 8,
   fakeX: 10,
   runner: 10,
   prize: 10,
-  virusScan: 10,
-  confirm: 10,
-  toolbar: 10,
+  virusScan: 12,
+  confirm: 14,
+  toolbar: 12,
 } as const;
 /** The newest unlocked kind gets this weight multiplier for NEWEST_BOOST_TICKS. */
 export const NEWEST_BOOST_MULT = 2;

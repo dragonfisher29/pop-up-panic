@@ -6,6 +6,8 @@ import {
   BURST_MIN,
   DESKTOP_H,
   DESKTOP_W,
+  KIND_WEIGHT,
+  NEWEST_BOOST_MULT,
   NEWEST_BOOST_TICKS,
   STRIP_H,
   TASKBAR_H,
@@ -26,9 +28,11 @@ describe('unlock waves', () => {
 
   it('doubles the newest type weight for 10 s after it unlocks', () => {
     const at = (tick: number, kind: string) => kindWeights(tick).find((k) => k.kind === kind)!.weight;
-    expect(at(30 * TICK_HZ, 'runner')).toBe(2 * at(30 * TICK_HZ, 'ad'));
-    expect(at(30 * TICK_HZ + NEWEST_BOOST_TICKS - 1, 'runner')).toBe(2 * at(30 * TICK_HZ, 'ad'));
-    expect(at(30 * TICK_HZ + NEWEST_BOOST_TICKS, 'runner')).toBe(at(30 * TICK_HZ, 'ad'));
+    const base = KIND_WEIGHT.runner;
+    expect(at(30 * TICK_HZ, 'runner')).toBe(NEWEST_BOOST_MULT * base);
+    expect(at(30 * TICK_HZ + NEWEST_BOOST_TICKS - 1, 'runner')).toBe(NEWEST_BOOST_MULT * base);
+    expect(at(30 * TICK_HZ + NEWEST_BOOST_TICKS, 'runner')).toBe(base);
+    expect(at(30 * TICK_HZ, 'ad')).toBe(KIND_WEIGHT.ad);
   });
 });
 
