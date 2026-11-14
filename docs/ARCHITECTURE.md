@@ -89,4 +89,4 @@ The M0 starter only has `{ t: 'close', id }`. In M1 this becomes `click` with `p
 See `worker/schema.sql`.
 
 ## 7. Storage keys (localStorage, prefix `upp:`)
-`upp:settings` (mute, volume, reducedMotion) · `upp:daily:<day>` (ranked result) · `upp:best:endless` · `upp:initials`
+`upp:settings` (mute, volume, reducedMotion) · `upp:daily:<day>` (ranked result) · `upp:best:endless` · `upp:best:daily` (best daily run, practice included) · `upp:initials`
