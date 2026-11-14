@@ -68,5 +68,10 @@ Format: **Title** — body — buttons.
 - Title: `Press any key to boot PanicOS 97` · Boot hint: `Press any key to skip`
 - Begin menu: `Mute` · `About PanicOS`
 - About: **About PanicOS 97** — PanicOS 97. Now with 40% fewer crashes than PanicOS 96. Results not typical. — [Sure]
-- Results: **Run Report** — `You survived {t}` · `{n} pop-ups closed` · `{n} points` — [Retry]
+- Results: **Run Report** — `You survived {t}` · `{n} pop-ups closed` · `{n} points` · `Best combo ×{n}` — [Share] [Retry] [Menu]
+- Results mode line: `Daily #{n} · ranked run` · `Daily #{n} · practice (ranked run: {t})` · `Endless` · `New personal best!`
+- Share: `Copied!` · `Clipboard said no. Copy it by hand:` · Countdown: `Next daily in {hh:mm:ss}`
+- Title mode select: `D = Daily · E = Endless`
+  - Daily: `Daily #{n}` — `Ranked. One shot. No pressure.` / `Ranked run done ({t}). Practice only.`
+  - Endless: `Endless` — `Random seed. Local glory only.` / `Best {t}`
 - Error guard: `Blue Screen of Panic. Something broke (for real this time).` — [Reboot]

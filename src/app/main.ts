@@ -10,7 +10,21 @@ import { InputCapture } from './input';
 import { Fx } from './fx';
 import { countUp, fitDesktop, formatClock } from './layout';
 import { Renderer } from './render';
-import { loadSettings, saveSettings } from './storage';
+import { dailySeed, dayKey, formatCountdown, msUntilNextDay, puzzleNumber } from './daily';
+import { ramStrip, shareText } from './share';
+import {
+  loadBest,
+  loadDaily,
+  loadSettings,
+  saveBest,
+  saveDailyIfFirst,
+  saveSettings,
+  type DailyResult,
+  type RunResult,
+} from './storage';
+
+type Mode = 'daily' | 'endless';
+const TOAST_MS = 1600;
 
 const MAX_STEPS_PER_FRAME = 5;
 const BOOT_LINE_MS = 450;
@@ -51,7 +65,12 @@ app.innerHTML = `
     </div>
     <div class="screen title-screen">
       <p class="title-logo">PanicOS <b>97</b></p>
+      <div class="modes" role="group" aria-label="Mode">
+        <button class="mode mode-daily" type="button" data-mode="daily"><b class="mode-name"></b><span class="mode-sub"></span></button>
+        <button class="mode mode-endless" type="button" data-mode="endless"><b class="mode-name">${SYSTEM.modeEndless}</b><span class="mode-sub"></span></button>
+      </div>
       <p class="blink">${SYSTEM.titlePrompt}</p>
+      <p class="hint">${SYSTEM.titleKeys}</p>
     </div>
     <div class="screen boot-screen" hidden>
       <pre class="boot-log"></pre>
@@ -66,9 +85,19 @@ app.innerHTML = `
       <div class="dialog results" role="dialog" aria-labelledby="results-title">
         <div class="titlebar"><span class="title" id="results-title">${SYSTEM.resultsTitle}</span></div>
         <div class="body">
+          <p class="results-mode"></p>
           <p class="results-time"></p>
-          <ul class="results-stats"><li class="results-closes"></li><li class="results-points"></li></ul>
-          <button class="btn retry" type="button">${SYSTEM.retry}</button>
+          <p class="results-best" hidden>${SYSTEM.newBest}</p>
+          <ul class="results-stats"><li class="results-closes"></li><li class="results-points"></li><li class="results-combo"></li></ul>
+          <p class="results-strip" aria-label="RAM over the run"></p>
+          <p class="results-next" hidden></p>
+          <div class="results-copy" hidden><p>${SYSTEM.copyFailed}</p><textarea readonly rows="2"></textarea></div>
+          <div class="results-actions">
+            <button class="btn share" type="button">${SYSTEM.share}</button>
+            <button class="btn retry" type="button">${SYSTEM.retry}</button>
+            <button class="btn to-menu" type="button">${SYSTEM.menu}</button>
+          </div>
+          <p class="toast" role="status" hidden>${SYSTEM.copied}</p>
         </div>
       </div>
     </div>
@@ -111,8 +140,66 @@ for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev
 let crashAt = 0;
 let bootTimers: number[] = [];
 
+// ---------- mode and run record ----------
+let mode: Mode = 'daily';
+/** UTC day the current daily run was started on (a run that crosses midnight stays on its day). */
+let runDay = dayKey(new Date());
+/** RAM (milli-percent) after every tick of the current run, for the share strip. */
+let ramSamples: number[] = [];
+let lastRun: RunResult | null = null;
+/** The day's ranked result when the last run was practice; null when the last run was ranked or Endless. */
+let rankedRun: DailyResult | null = null;
+let isNewBest = false;
+
 function newSeed(): number {
   return (Math.random() * 2 ** 32) >>> 0;
+}
+
+function seedFor(m: Mode): number {
+  return m === 'daily' ? dailySeed(runDay) : newSeed();
+}
+
+function paintTitle(): void {
+  const day = dayKey(new Date());
+  const ranked = loadDaily(day);
+  $('.mode-daily .mode-name').textContent = SYSTEM.modeDaily(puzzleNumber(day));
+  $('.mode-daily .mode-sub').textContent = ranked
+    ? SYSTEM.modeDailyPractice(formatClock(ranked.timeMs))
+    : SYSTEM.modeDailyRanked;
+  const best = loadBest('endless');
+  $('.mode-endless .mode-sub').textContent = best ? SYSTEM.modeEndlessBest(formatClock(best.timeMs)) : SYSTEM.modeEndlessNew;
+}
+
+function showTitle(): void {
+  phase = 'title';
+  show(results, false);
+  show(crashScreen, false);
+  paintTitle();
+  show(titleScreen, true);
+  $<HTMLButtonElement>(`.mode-${mode}`).focus();
+}
+
+function pickMode(m: Mode): void {
+  mode = m;
+  boot();
+}
+
+/** Saves the finished run: the day's ranked result (first daily run only) and the per-mode best. */
+function recordRun(): void {
+  const run: RunResult = {
+    timeMs: survivalMs(state),
+    points: state.points,
+    closes: state.closes,
+    bestCombo: state.bestCombo,
+    strip: ramStrip(ramSamples, state.status === 'crashed'),
+  };
+  lastRun = run;
+  rankedRun = null;
+  if (mode === 'daily') {
+    const daily: DailyResult = { ...run, day: runDay };
+    if (!saveDailyIfFirst(daily)) rankedRun = loadDaily(runDay);
+  }
+  isNewBest = saveBest(mode, run);
 }
 
 // ---------- layout ----------
@@ -151,8 +238,11 @@ function startRun(): void {
   closeMenu();
   renderer.clear();
   fx.clear();
-  state = createGame(newSeed());
+  if (mode === 'daily') runDay = dayKey(new Date());
+  state = createGame(seedFor(mode));
   prevState = state;
+  ramSamples = [];
+  hideShareUi();
   input.reset();
   input.enabled = true;
   acc = 0;
@@ -164,6 +254,7 @@ function enterCrash(): void {
   input.enabled = false;
   closeMenu();
   crashAt = performance.now();
+  recordRun();
   show(crashScreen, true);
 }
 
@@ -172,13 +263,14 @@ function showResults(): void {
   phase = 'results';
   show(crashScreen, false);
   countStart = performance.now();
+  paintResultsOnce();
   paintResults(countStart);
   show(results, true);
   $<HTMLButtonElement>('.retry').focus();
 }
 
 function onAnyKey(): void {
-  if (phase === 'title') boot();
+  if (phase === 'title') pickMode(mode);
   else if (phase === 'boot') startRun();
   else if (phase === 'crash') showResults();
 }
@@ -187,12 +279,23 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (e.key === 'Escape') closeMenu();
   if (phase === 'results') {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      startRun();
-    }
+    // Enter/Space activate the focused button (Retry by default); Escape goes back to the title.
+    if (e.key === 'Escape') showTitle();
     return;
   }
+  if (phase === 'title') {
+    const k = e.key.toLowerCase();
+    if (k === 'd' || k === 'e') return pickMode(k === 'd' ? 'daily' : 'endless');
+    if (k === 'arrowleft' || k === 'arrowright' || k === 'arrowup' || k === 'arrowdown' || k === 'tab') {
+      e.preventDefault();
+      mode = mode === 'daily' ? 'endless' : 'daily';
+      $<HTMLButtonElement>(`.mode-${mode}`).focus();
+      return;
+    }
+    if (['shift', 'control', 'alt', 'meta'].includes(k)) return;
+  }
+  // Enter/Space would also "click" whatever gets focus next (Retry on the results panel).
+  if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
   if (phase === 'run') {
     if (input.key(e)) e.preventDefault();
     return;
@@ -202,8 +305,16 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
   if (phase === 'run' && e.key === ' ') e.preventDefault(); // no button activation on Space release
 });
-for (const el of [titleScreen, bootScreen, crashScreen]) el.addEventListener('pointerdown', onAnyKey);
+for (const el of [bootScreen, crashScreen]) el.addEventListener('pointerdown', onAnyKey);
+for (const btn of titleScreen.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
+  btn.addEventListener('click', () => pickMode(btn.dataset.mode as Mode));
+  btn.addEventListener('focus', () => (mode = btn.dataset.mode as Mode));
+}
 $('.retry').addEventListener('click', startRun);
+$('.to-menu').addEventListener('click', showTitle);
+$('.share').addEventListener('click', () => void share());
+paintTitle();
+$<HTMLButtonElement>('.mode-daily').focus();
 
 // ---------- Begin menu ----------
 function closeMenu(): void {
@@ -276,6 +387,74 @@ function paintResults(now: number): void {
   $('.results-time').textContent = SYSTEM.survived(formatClock(countUp(survivalMs(state), el, COUNT_MS)));
   $('.results-closes').textContent = SYSTEM.closes(countUp(state.closes, el, COUNT_MS));
   $('.results-points').textContent = SYSTEM.points(countUp(state.points, el, COUNT_MS));
+  $('.results-combo').textContent = SYSTEM.bestCombo(Math.max(1, countUp(state.bestCombo, el, COUNT_MS)));
+}
+
+/** The parts of the results panel that don't count up. */
+function paintResultsOnce(): void {
+  const n = puzzleNumber(runDay);
+  $('.results-mode').textContent =
+    mode === 'endless'
+      ? SYSTEM.runEndless
+      : rankedRun
+        ? SYSTEM.runPractice(n, formatClock(rankedRun.timeMs))
+        : SYSTEM.runRanked(n);
+  show($('.results-best'), isNewBest);
+  $('.results-strip').textContent = lastRun?.strip ?? '';
+  show($('.results-next'), mode === 'daily');
+  paintCountdown();
+}
+
+let countdownText = '';
+function paintCountdown(): void {
+  if (mode !== 'daily') return;
+  const t = SYSTEM.nextDaily(formatCountdown(msUntilNextDay(new Date())));
+  if (t !== countdownText) $('.results-next').textContent = countdownText = t;
+}
+
+// ---------- share ----------
+let toastTimer = 0;
+function hideShareUi(): void {
+  clearTimeout(toastTimer);
+  show($('.toast'), false);
+  show($('.results-copy'), false);
+}
+
+function currentShareText(): string {
+  const r = lastRun!;
+  return shareText({
+    puzzle: mode === 'daily' ? puzzleNumber(runDay) : null,
+    timeMs: r.timeMs,
+    closes: r.closes,
+    bestCombo: r.bestCombo,
+    strip: r.strip,
+  });
+}
+
+async function share(): Promise<void> {
+  if (!lastRun) return;
+  const text = currentShareText();
+  // Web Share on touch devices (phones); desktop browsers that have it still get the clipboard.
+  if (typeof navigator.share === 'function' && matchMedia('(pointer: coarse)').matches) {
+    try {
+      await navigator.share({ text });
+      return;
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return; // the player closed the sheet
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    hideShareUi();
+    show($('.toast'), true);
+    toastTimer = window.setTimeout(() => show($('.toast'), false), TOAST_MS);
+  } catch {
+    // No clipboard (http, permissions): show the text so it can be copied by hand.
+    const box = $<HTMLTextAreaElement>('.results-copy textarea');
+    box.value = text;
+    show($('.results-copy'), true);
+    box.select();
+  }
 }
 
 // ---------- loop ----------
@@ -287,6 +466,7 @@ function frame(now: number): void {
     let steps = 0;
     while (acc >= MS_PER_TICK && steps < MAX_STEPS_PER_FRAME) {
       state = step(state, input.drain(state));
+      ramSamples.push(state.ram);
       acc -= MS_PER_TICK;
       steps++;
       if (state.status === 'crashed') break;
@@ -299,7 +479,10 @@ function frame(now: number): void {
     prevState = state;
     if (state.status === 'crashed') enterCrash();
   }
-  if (phase === 'results' && now - countStart <= COUNT_MS + 50) paintResults(now);
+  if (phase === 'results') {
+    if (now - countStart <= COUNT_MS + 50) paintResults(now);
+    paintCountdown();
+  }
   last = now;
   requestAnimationFrame(frame);
 }

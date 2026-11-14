@@ -85,6 +85,18 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .results-time { font-family: var(--pixel); font-size: 32px !important; font-weight: 700; text-align: center; }
 .results-stats { margin: 0; padding: 8px 12px; list-style: none; font-size: 14px; line-height: 1.6;
   background: var(--light); border: 2px solid; border-color: var(--dark) var(--light) var(--light) var(--dark); }
+.results .body .results-mode { text-align: center; font-size: 13px; color: var(--title-a); font-weight: 700; }
+.results .body .results-best { text-align: center; font: 700 16px var(--pixel); color: var(--alert); }
+.results .body .results-strip { text-align: center; font-size: 24px; letter-spacing: 2px; line-height: 1; }
+.results .body .results-next { text-align: center; font: 400 15px var(--pixel); color: var(--dark); }
+.results-copy textarea { width: 100%; box-sizing: border-box; resize: none; font: 13px var(--sans); }
+.results-actions { display: flex; justify-content: center; gap: 8px; }
+.results-actions .btn { min-width: 88px; }
+.results .body .toast {
+  position: absolute; left: 50%; bottom: -44px; transform: translateX(-50%);
+  padding: 6px 14px; background: #ffd23a; border: 2px solid var(--ink);
+  font: 700 16px var(--pixel); white-space: nowrap; box-shadow: 4px 4px 0 rgb(0 0 0 / 0.5);
+}
 
 /* ---------- hang banner ---------- */
 .hang {
@@ -151,6 +163,19 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .title-logo b { color: var(--crt); }
 .blink { margin: 0; font-size: 22px; animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+.title-screen .hint { margin: -12px 0 0; color: #1c9a3e; font-size: 16px; }
+.modes { display: flex; gap: 24px; }
+.mode {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 300px; padding: 16px 12px; cursor: pointer;
+  background: #000; color: var(--crt); font-family: var(--pixel);
+  border: 3px solid #1c9a3e;
+}
+.mode-name { font-size: 34px; }
+.mode-sub { font-size: 15px; color: #8fdca4; min-height: 1.2em; }
+.mode:hover, .mode:focus-visible, .mode:focus { outline: none; border-color: var(--crt); background: #0b2a14; }
+.mode { position: relative; }
+.mode:focus::before { content: '▶'; position: absolute; left: 12px; top: 22px; font-size: 22px; }
 
 .boot-screen { justify-content: flex-start; align-items: flex-start; }
 .boot-log { margin: 0; font: 400 22px/1.6 var(--pixel); white-space: pre-wrap; }
