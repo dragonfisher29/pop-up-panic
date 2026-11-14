@@ -98,10 +98,11 @@ describe('step', () => {
     while (s.hangTicks === 0 && s.status === 'running') s = step(s, []);
     expect(s.hangTicks).toBeGreaterThan(0);
     expect(s.hangTicks).toBeLessThan(HANG_FUSE_TICKS);
-    s = step(s, s.windows.map((w) => close(w.id)));
+    s = step(s, [{ t: 'taskManager' }]);
     expect(s.hangTicks).toBe(0);
     expect(s.status).toBe('running');
-    expect(s.ram).toBeLessThanOrEqual(RAM_OS_BASE + 8_000);
+    const friendly = s.windows.filter((w) => w.kind === 'antivirus').reduce((sum, w) => sum + w.ram, 0);
+    expect(s.ram).toBeLessThanOrEqual(RAM_OS_BASE + friendly + 8_000);
   });
 
   it('spawn interval eases from start to end', () => {
