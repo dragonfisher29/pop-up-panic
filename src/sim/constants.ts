@@ -126,3 +126,15 @@ export const ANTIVIRUS_PENALTY_TICKS = TICK_HZ;
 export const FORCE_QUIT_MAX = 3;
 export const FORCE_QUIT_REGEN_TICKS = 45 * TICK_HZ;
 export const TASK_MANAGER_FLASH_TICKS = 90; // 1.5 s
+
+// ---------- daily mode (SPEC §7) ----------
+
+/** UTC day of Daily #1. The app turns dates into seeds; the sim only sees the number. */
+export const LAUNCH_DAY = '2026-11-14';
+/** Prefix hashed with the UTC day ("popup-panic:2026-11-15") to make the daily seed. */
+export const DAILY_SEED_PREFIX = 'popup-panic:';
+/** RAM strip in the share text: slices of the run, and the RAM thresholds (milli-percent). */
+export const SHARE_SLICES = 8;
+export const SHARE_YELLOW_RAM = 50_000;
+export const SHARE_ORANGE_RAM = 75_000;
+export const SHARE_RED_RAM = 90_000;
