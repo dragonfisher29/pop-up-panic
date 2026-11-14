@@ -4,7 +4,7 @@ import { createGame } from './step';
 import type { GameState, Win } from './types';
 
 function win(id: number, x: number, y: number, z: number, w = 100, h = 50): Win {
-  return { id, kind: 'ad', x, y, w, h, z, bornTick: 0, ram: 0 };
+  return { id, kind: 'ad', x, y, w, h, z, bornTick: 0, ram: 0, tellUntilTick: 0, timerTick: -1, stage: 0, stageCount: 0, link: 0 };
 }
 
 function withWins(windows: Win[]): GameState {

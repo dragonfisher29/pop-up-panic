@@ -1,21 +1,26 @@
 import {
-  COMBO_MAX,
-  COMBO_WINDOW_TICKS,
+  ANTIVIRUS_PENALTY_RAM,
+  BURST_EVERY_TICKS,
   DESKTOP_H,
   DESKTOP_W,
   FIRST_SPAWN_TICK,
+  FORCE_QUIT_MAX,
+  FORCE_QUIT_REGEN_TICKS,
   HANG_FUSE_TICKS,
   KIND_TUNING,
   RAM_MAX,
   RAM_OS_BASE,
-  SPAWN_EASE_TICKS,
-  SPAWN_INTERVAL_END_TICKS,
-  SPAWN_INTERVAL_START_TICKS,
-  TASKBAR_H,
+  TASK_MANAGER_FLASH_TICKS,
   TICK_HZ,
 } from './constants';
-import { rngInt } from './rng';
-import type { GameState, Input, Win } from './types';
+import { directorTick } from './director';
+import { KINDS } from './kinds';
+import { uninstallStrip } from './kinds/toolbar';
+import { windowsUnder } from './select';
+import type { GameState, Input } from './types';
+import { clamp, clampWin, isHostile, makeCtx, type Ctx, type Draft } from './world';
+
+export { spawnIntervalAt } from './director';
 
 export function createGame(seed: number): GameState {
   return {
@@ -26,9 +31,13 @@ export function createGame(seed: number): GameState {
     ram: RAM_OS_BASE,
     hangTicks: 0,
     windows: [],
+    strips: [],
     nextId: 1,
     nextZ: 1,
     nextSpawnTick: FIRST_SPAWN_TICK,
+    nextBurstTick: BURST_EVERY_TICKS,
+    burstLeft: 0,
+    burstNextTick: 0,
     closes: 0,
     combo: 0,
     lastCloseTick: -1_000_000,
@@ -36,6 +45,12 @@ export function createGame(seed: number): GameState {
     crashTick: null,
     pointerX: DESKTOP_W >> 1,
     pointerY: DESKTOP_H >> 1,
+    forceQuits: FORCE_QUIT_MAX,
+    forceQuitRegenTick: -1,
+    taskManagerUsed: false,
+    flashUntilTick: 0,
+    flashCount: 0,
+    spikeUntilTick: 0,
   };
 }
 
@@ -44,102 +59,108 @@ function toInt(v: number): number {
   return Number.isFinite(v) ? Math.trunc(v) : 0;
 }
 
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}
-
-/** Spawn interval in ticks for a given tick: ease-out from START to END. Integer maths only. */
-export function spawnIntervalAt(tick: number): number {
-  const t = Math.min(tick, SPAWN_EASE_TICKS);
-  // ease-out quad: progress p = 1 - (1 - t/T)^2, computed in integers scaled by T^2
-  const T = SPAWN_EASE_TICKS;
-  const remaining = T - t;
-  const range = SPAWN_INTERVAL_START_TICKS - SPAWN_INTERVAL_END_TICKS;
-  const reduction = Math.floor((range * (T * T - remaining * remaining)) / (T * T));
-  return SPAWN_INTERVAL_START_TICKS - reduction;
+function applyInput(ctx: Ctx, input: Input): void {
+  const s = ctx.s;
+  switch (input.t) {
+    case 'pointer':
+      s.pointerX = clamp(toInt(input.x), 0, DESKTOP_W - 1);
+      s.pointerY = clamp(toInt(input.y), 0, DESKTOP_H - 1);
+      break;
+    case 'focus': {
+      const w = ctx.find(input.id);
+      if (!w) break;
+      const topZ = s.windows.reduce((m, v) => (v.z > m ? v.z : m), 0);
+      if (w.z === topZ) break;
+      ctx.patch(w.id, { z: s.nextZ });
+      s.nextZ += 1;
+      break;
+    }
+    case 'drag': {
+      const w = ctx.find(input.id);
+      if (!w) break;
+      const c = clampWin(s, w, w.x + toInt(input.dx), w.y + toInt(input.dy));
+      if (c.x !== w.x || c.y !== w.y) ctx.patch(w.id, c);
+      break;
+    }
+    case 'click': {
+      if (input.part === 'tray') {
+        if (uninstallStrip(ctx, input.id)) break;
+      }
+      const w = ctx.find(input.id);
+      if (!w) break;
+      const kind = KINDS[w.kind];
+      if (input.part === 'close') {
+        if (kind.onClose) kind.onClose(ctx, w);
+        else ctx.playerClose([w.id]);
+      } else {
+        kind.onClick?.(ctx, w, input.part);
+      }
+      break;
+    }
+    case 'forceQuit': {
+      if (s.forceQuits <= 0 || s.windows.length === 0) break;
+      const under = windowsUnder(s, toInt(input.x), toInt(input.y));
+      const target = under[0] ?? s.windows.reduce((a, b) => (b.z > a.z ? b : a));
+      ctx.playerClose([target.id]);
+      s.forceQuits -= 1;
+      if (s.forceQuitRegenTick === -1) s.forceQuitRegenTick = s.tick + FORCE_QUIT_REGEN_TICKS;
+      break;
+    }
+    case 'taskManager': {
+      if (s.taskManagerUsed) break;
+      const ids = s.windows.filter(isHostile).map((w) => w.id);
+      s.taskManagerUsed = true;
+      s.flashUntilTick = s.tick + TASK_MANAGER_FLASH_TICKS;
+      s.flashCount = ids.length;
+      ctx.playerClose(ids);
+      break;
+    }
+  }
 }
 
 /** Advances the game by exactly one tick. Pure: never mutates `prev`. */
 export function step(prev: GameState, inputs: readonly Input[]): GameState {
   if (prev.status === 'crashed') return prev;
 
-  const s: GameState = { ...prev, windows: prev.windows.slice() };
-  let windows = s.windows as Win[];
+  const s: Draft = { ...prev, windows: prev.windows.slice(), strips: prev.strips.slice() };
+  const ctx = makeCtx(s, KINDS);
 
   // 1. Inputs (applied in order, before spawning and leaking)
-  for (const input of inputs) {
-    switch (input.t) {
-      case 'pointer':
-        s.pointerX = clamp(toInt(input.x), 0, DESKTOP_W - 1);
-        s.pointerY = clamp(toInt(input.y), 0, DESKTOP_H - 1);
-        break;
-      case 'focus': {
-        const idx = windows.findIndex((w) => w.id === input.id);
-        if (idx === -1) break;
-        const w = windows[idx]!;
-        const topZ = windows.reduce((m, v) => (v.z > m ? v.z : m), 0);
-        if (w.z === topZ) break;
-        windows[idx] = { ...w, z: s.nextZ };
-        s.nextZ += 1;
-        break;
-      }
-      case 'drag': {
-        const idx = windows.findIndex((w) => w.id === input.id);
-        if (idx === -1) break;
-        const w = windows[idx]!;
-        const x = clamp(w.x + toInt(input.dx), 0, DESKTOP_W - w.w);
-        const y = clamp(w.y + toInt(input.dy), 0, DESKTOP_H - TASKBAR_H - w.h);
-        if (x !== w.x || y !== w.y) windows[idx] = { ...w, x, y };
-        break;
-      }
-      case 'click': {
-        if (input.part !== 'close') break;
-        const idx = windows.findIndex((w) => w.id === input.id);
-        if (idx === -1) break;
-        windows.splice(idx, 1);
-        s.combo = s.tick - s.lastCloseTick <= COMBO_WINDOW_TICKS ? Math.min(s.combo + 1, COMBO_MAX) : 1;
-        s.lastCloseTick = s.tick;
-        s.closes += 1;
-        s.points += s.combo;
-        break;
-      }
-    }
+  for (const input of inputs) applyInput(ctx, input);
+
+  // 2. Kind behaviours, in id order of the windows open now
+  for (const id of s.windows.map((w) => w.id)) {
+    const w = ctx.find(id);
+    if (w) KINDS[w.kind].onTick?.(ctx, w);
   }
 
-  // 2. Spawning
-  if (s.tick >= s.nextSpawnTick) {
-    const tune = KIND_TUNING.ad;
-    const rx = rngInt(s.rng, 0, DESKTOP_W - tune.w);
-    const ry = rngInt(rx.state, 0, DESKTOP_H - TASKBAR_H - tune.h);
-    s.rng = ry.state;
-    windows.push({
-      id: s.nextId,
-      kind: 'ad',
-      x: rx.value,
-      y: ry.value,
-      w: tune.w,
-      h: tune.h,
-      z: s.nextZ,
-      bornTick: s.tick,
-      ram: tune.ramStart,
-    });
-    s.nextId += 1;
-    s.nextZ += 1;
-    s.nextSpawnTick = s.tick + spawnIntervalAt(s.tick);
+  // 3. Spawning
+  directorTick(ctx);
+
+  // 4. Keep every window inside the play area (strips may have shrunk it)
+  for (const w of s.windows) {
+    const c = clampWin(s, w, w.x, w.y);
+    if (c.x !== w.x || c.y !== w.y) ctx.patch(w.id, c);
   }
 
-  // 3. Leak: every whole second of age, add leakPerSec (capped). Integer-only.
-  windows = windows.map((w) => {
+  // 5. Leak: every whole second of age, add leakPerSec (capped). Integer-only.
+  s.windows = s.windows.map((w) => {
     const age = s.tick - w.bornTick;
     if (age <= 0 || age % TICK_HZ !== 0) return w;
     const tune = KIND_TUNING[w.kind];
     const ram = Math.min(w.ram + tune.leakPerSec, tune.ramCap);
     return ram === w.ram ? w : { ...w, ram };
   });
-  s.windows = windows;
 
-  // 4. RAM and hang fuse
-  s.ram = RAM_OS_BASE + windows.reduce((sum, w) => sum + w.ram, 0);
+  // 6. Force Quit regen
+  if (s.forceQuitRegenTick !== -1 && s.tick >= s.forceQuitRegenTick) {
+    s.forceQuits = Math.min(s.forceQuits + 1, FORCE_QUIT_MAX);
+    s.forceQuitRegenTick = s.forceQuits < FORCE_QUIT_MAX ? s.tick + FORCE_QUIT_REGEN_TICKS : -1;
+  }
+
+  // 7. RAM and hang fuse
+  const spike = s.tick < s.spikeUntilTick ? ANTIVIRUS_PENALTY_RAM : 0;
+  s.ram = RAM_OS_BASE + spike + s.windows.reduce((sum, w) => sum + w.ram, 0);
   s.hangTicks = s.ram >= RAM_MAX ? s.hangTicks + 1 : 0;
   if (s.hangTicks >= HANG_FUSE_TICKS) {
     s.status = 'crashed';
