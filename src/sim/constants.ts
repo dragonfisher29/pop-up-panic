@@ -14,6 +14,9 @@ export const RAM_OS_BASE = 10_000; // 10%
 /** Ticks spent at >= 100% RAM before crashing (2 s). */
 export const HANG_FUSE_TICKS = 2 * TICK_HZ;
 
+/** Tick of the first pop-up (0.5 s). */
+export const FIRST_SPAWN_TICK = 30;
+
 /** Spawn interval eases from START to END over EASE_TICKS (ease-out), then holds. */
 export const SPAWN_INTERVAL_START_TICKS = 90; // 1500 ms
 export const SPAWN_INTERVAL_END_TICKS = 15; // 250 ms

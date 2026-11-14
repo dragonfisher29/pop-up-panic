@@ -36,7 +36,17 @@ export interface GameState {
   lastCloseTick: number;
   points: number;
   crashTick: number | null;
+  /** latest pointer sample, integer virtual px (the M2 runner reads it) */
+  pointerX: number;
+  pointerY: number;
 }
 
-/** M0 starter input. In M1 this becomes { t: 'click'; id; part: 'close' } and the other inputs in ARCHITECTURE §3. */
-export type Input = { t: 'close'; id: number };
+/** Clickable parts of a window. M1 only acts on 'close'; the rest arrive with M2 kinds. */
+export type WindowPart = 'close' | 'body' | 'link' | 'cancel' | 'tray';
+
+/** Player inputs for one tick (ARCHITECTURE §3). Coordinates are virtual desktop px. */
+export type Input =
+  | { t: 'pointer'; x: number; y: number }
+  | { t: 'click'; id: number; part: WindowPart }
+  | { t: 'focus'; id: number }
+  | { t: 'drag'; id: number; dx: number; dy: number };

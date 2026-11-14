@@ -3,6 +3,7 @@ import {
   COMBO_WINDOW_TICKS,
   DESKTOP_H,
   DESKTOP_W,
+  FIRST_SPAWN_TICK,
   HANG_FUSE_TICKS,
   KIND_TUNING,
   RAM_MAX,
@@ -27,13 +28,19 @@ export function createGame(seed: number): GameState {
     windows: [],
     nextId: 1,
     nextZ: 1,
-    nextSpawnTick: 30, // first pop-up after 0.5 s
+    nextSpawnTick: FIRST_SPAWN_TICK,
     closes: 0,
     combo: 0,
     lastCloseTick: -1_000_000,
     points: 0,
     crashTick: null,
+    pointerX: DESKTOP_W >> 1,
+    pointerY: DESKTOP_H >> 1,
   };
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
 }
 
 /** Spawn interval in ticks for a given tick: ease-out from START to END. Integer maths only. */
@@ -54,16 +61,43 @@ export function step(prev: GameState, inputs: readonly Input[]): GameState {
   const s: GameState = { ...prev, windows: prev.windows.slice() };
   let windows = s.windows as Win[];
 
-  // 1. Inputs
+  // 1. Inputs (applied in order, before spawning and leaking)
   for (const input of inputs) {
-    if (input.t === 'close') {
-      const idx = windows.findIndex((w) => w.id === input.id);
-      if (idx === -1) continue;
-      windows.splice(idx, 1);
-      s.combo = s.tick - s.lastCloseTick <= COMBO_WINDOW_TICKS ? Math.min(s.combo + 1, COMBO_MAX) : 1;
-      s.lastCloseTick = s.tick;
-      s.closes += 1;
-      s.points += s.combo;
+    switch (input.t) {
+      case 'pointer':
+        s.pointerX = clamp(Math.trunc(input.x), 0, DESKTOP_W - 1);
+        s.pointerY = clamp(Math.trunc(input.y), 0, DESKTOP_H - 1);
+        break;
+      case 'focus': {
+        const idx = windows.findIndex((w) => w.id === input.id);
+        if (idx === -1) break;
+        const w = windows[idx]!;
+        const topZ = windows.reduce((m, v) => (v.z > m ? v.z : m), 0);
+        if (w.z === topZ) break;
+        windows[idx] = { ...w, z: s.nextZ };
+        s.nextZ += 1;
+        break;
+      }
+      case 'drag': {
+        const idx = windows.findIndex((w) => w.id === input.id);
+        if (idx === -1) break;
+        const w = windows[idx]!;
+        const x = clamp(w.x + Math.trunc(input.dx), 0, DESKTOP_W - w.w);
+        const y = clamp(w.y + Math.trunc(input.dy), 0, DESKTOP_H - TASKBAR_H - w.h);
+        if (x !== w.x || y !== w.y) windows[idx] = { ...w, x, y };
+        break;
+      }
+      case 'click': {
+        if (input.part !== 'close') break;
+        const idx = windows.findIndex((w) => w.id === input.id);
+        if (idx === -1) break;
+        windows.splice(idx, 1);
+        s.combo = s.tick - s.lastCloseTick <= COMBO_WINDOW_TICKS ? Math.min(s.combo + 1, COMBO_MAX) : 1;
+        s.lastCloseTick = s.tick;
+        s.closes += 1;
+        s.points += s.combo;
+        break;
+      }
     }
   }
 
