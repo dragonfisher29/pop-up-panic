@@ -2,8 +2,10 @@
 import '@fontsource/pixelify-sans/400.css';
 import '@fontsource/pixelify-sans/700.css';
 import './styles.css';
-import { createGame, DESKTOP_H, DESKTOP_W, MS_PER_TICK, step, survivalMs, type GameState } from '../sim';
+import { createGame, DESKTOP_H, DESKTOP_W, MS_PER_TICK, ramPercent, step, survivalMs, type GameState } from '../sim';
+import { Sfx } from './audio';
 import { SYSTEM } from './copy';
+import { fxEvents, type FxEvent } from './events';
 import { InputCapture } from './input';
 import { fitDesktop, formatClock } from './layout';
 import { Renderer } from './render';
@@ -99,6 +101,11 @@ const settings = loadSettings();
 
 let phase: Phase = 'title';
 let state: GameState = createGame(newSeed());
+let prevState: GameState = state;
+const sfx = new Sfx();
+sfx.setMuted(settings.mute);
+// Browsers block audio until a gesture: unlock on the first pointerdown/keydown.
+for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev, () => sfx.unlock(), { capture: true });
 let crashAt = 0;
 let bootTimers: number[] = [];
 
@@ -142,6 +149,7 @@ function startRun(): void {
   closeMenu();
   renderer.clear();
   state = createGame(newSeed());
+  prevState = state;
   input.reset();
   input.enabled = true;
   acc = 0;
@@ -217,6 +225,7 @@ menu.addEventListener('click', (e) => {
   if (!item) return;
   if (item.dataset.menu === 'mute') {
     settings.mute = !settings.mute;
+    sfx.setMuted(settings.mute);
     saveSettings(settings);
     syncMute();
   } else if (item.dataset.menu === 'about') {
@@ -230,6 +239,32 @@ desktop.addEventListener('pointerdown', (e) => {
   const t = e.target as HTMLElement;
   if (!menu.hidden && !t.closest('.menu') && !t.closest('.begin')) closeMenu();
 });
+
+// ---------- effects ----------
+function handleFx(events: readonly FxEvent[]): void {
+  for (const e of events) {
+    switch (e.t) {
+      case 'spawn':
+        sfx.spawn(e.kind);
+        break;
+      case 'close':
+        sfx.close();
+        break;
+      case 'combo':
+        sfx.combo(e.n);
+        break;
+      case 'wave':
+        sfx.wave();
+        break;
+      case 'crash':
+        sfx.crash();
+        break;
+      default:
+        break;
+    }
+  }
+  // FX HOOK: route `events` to visual effects here (pop-in, puff, combo popups, shake) in later M3 tasks.
+}
 
 // ---------- loop ----------
 let last = performance.now();
@@ -246,6 +281,9 @@ function frame(now: number): void {
     }
     if (steps === MAX_STEPS_PER_FRAME) acc = 0;
     renderer.render(state);
+    handleFx(fxEvents(prevState, state));
+    if (state.status === 'running') sfx.alarm(ramPercent(state), now);
+    prevState = state;
     if (state.status === 'crashed') enterCrash();
   }
   last = now;
