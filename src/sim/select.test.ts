@@ -24,6 +24,11 @@ describe('windowsUnder', () => {
     expect(windowsUnder(s, 99, 49).map((w) => w.id)).toEqual([2, 1]);
   });
 
+  it('breaks equal-z ties by higher id first', () => {
+    const tie = withWins([win(4, 0, 0, 5), win(9, 0, 0, 5)]);
+    expect(windowsUnder(tie, 1, 1).map((w) => w.id)).toEqual([9, 4]);
+  });
+
   it('returns an empty list for a miss', () => {
     expect(windowsUnder(s, 1000, 10)).toEqual([]);
   });

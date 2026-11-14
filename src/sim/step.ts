@@ -39,6 +39,11 @@ export function createGame(seed: number): GameState {
   };
 }
 
+/** Input number -> integer. NaN and ±Infinity become 0 so bad input can never poison state. */
+function toInt(v: number): number {
+  return Number.isFinite(v) ? Math.trunc(v) : 0;
+}
+
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
@@ -65,8 +70,8 @@ export function step(prev: GameState, inputs: readonly Input[]): GameState {
   for (const input of inputs) {
     switch (input.t) {
       case 'pointer':
-        s.pointerX = clamp(Math.trunc(input.x), 0, DESKTOP_W - 1);
-        s.pointerY = clamp(Math.trunc(input.y), 0, DESKTOP_H - 1);
+        s.pointerX = clamp(toInt(input.x), 0, DESKTOP_W - 1);
+        s.pointerY = clamp(toInt(input.y), 0, DESKTOP_H - 1);
         break;
       case 'focus': {
         const idx = windows.findIndex((w) => w.id === input.id);
@@ -82,8 +87,8 @@ export function step(prev: GameState, inputs: readonly Input[]): GameState {
         const idx = windows.findIndex((w) => w.id === input.id);
         if (idx === -1) break;
         const w = windows[idx]!;
-        const x = clamp(w.x + Math.trunc(input.dx), 0, DESKTOP_W - w.w);
-        const y = clamp(w.y + Math.trunc(input.dy), 0, DESKTOP_H - TASKBAR_H - w.h);
+        const x = clamp(w.x + toInt(input.dx), 0, DESKTOP_W - w.w);
+        const y = clamp(w.y + toInt(input.dy), 0, DESKTOP_H - TASKBAR_H - w.h);
         if (x !== w.x || y !== w.y) windows[idx] = { ...w, x, y };
         break;
       }

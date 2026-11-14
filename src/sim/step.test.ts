@@ -187,6 +187,28 @@ describe('drag', () => {
   });
 });
 
+describe('bad inputs', () => {
+  it('ignores clicks on parts other than close (until M2 kinds use them)', () => {
+    const s = withWindows(41, 1);
+    const id = s.windows[0]!.id;
+    const next = step(s, (['body', 'link', 'cancel', 'tray'] as const).map((part) => ({ t: 'click', id, part })));
+    expect(next.windows.find((w) => w.id === id)).toBeDefined();
+    expect(next.closes).toBe(0);
+  });
+
+  it('treats non-finite pointer and drag values as 0 so state stays integer', () => {
+    let s = withWindows(41, 1);
+    const w0 = s.windows[0]!;
+    s = step(s, [
+      { t: 'pointer', x: Number.NaN, y: Number.POSITIVE_INFINITY },
+      { t: 'drag', id: w0.id, dx: Number.NaN, dy: Number.NEGATIVE_INFINITY },
+    ]);
+    const w = s.windows.find((v) => v.id === w0.id)!;
+    expect([s.pointerX, s.pointerY]).toEqual([0, 0]);
+    expect([w.x, w.y]).toEqual([w0.x, w0.y]);
+  });
+});
+
 describe('pointer', () => {
   it('stores the latest pointer sample as integers inside the desktop', () => {
     let s = createGame(1);
