@@ -20,8 +20,7 @@ export const FIRST_SPAWN_TICK = 30;
 /** Spawn interval eases from START to END over EASE_TICKS (ease-out), then holds. */
 export const SPAWN_INTERVAL_START_TICKS = 90; // 1500 ms
 export const SPAWN_INTERVAL_END_TICKS = 15; // 250 ms
-/** SPEC §5 says 150 s; tuned to 120 s so the balance bot median lands in 90–140 s (150 s gave 152 s). */
-export const SPAWN_EASE_TICKS = 120 * TICK_HZ;
+export const SPAWN_EASE_TICKS = 150 * TICK_HZ;
 
 /** Combo: a close within this many ticks of the previous close raises the combo. */
 export const COMBO_WINDOW_TICKS = 36; // 600 ms
