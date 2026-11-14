@@ -1,5 +1,12 @@
-// toolbar: closing the installer (X or Install) attaches a strip to the top of the desktop.
+// toolbar: closing the installer (X or Install) attaches a 40 px strip to the top of the desktop,
+// up to STRIP_MAX. Strips shrink the play area (step re-clamps windows every tick).
+// Counter: click a strip's tray icon to uninstall it.
+import { STRIP_MAX } from '../constants';
+import type { Win } from '../types';
 import type { Ctx, KindBehaviour } from '../world';
+
+/** Number of strip names the app has copy for. */
+export const STRIP_NAME_COUNT = 4;
 
 /** Removes the strip with this id. Returns false if there is no such strip. */
 export function uninstallStrip(ctx: Ctx, id: number): boolean {
@@ -9,4 +16,17 @@ export function uninstallStrip(ctx: Ctx, id: number): boolean {
   return true;
 }
 
-export const toolbar: KindBehaviour = {};
+function install(ctx: Ctx, w: Win): void {
+  ctx.playerClose([w.id]);
+  const s = ctx.s;
+  if (s.strips.length >= STRIP_MAX) return;
+  s.strips.push({ id: s.nextId, name: ctx.rand(0, STRIP_NAME_COUNT - 1) });
+  s.nextId += 1;
+}
+
+export const toolbar: KindBehaviour = {
+  onClose: install,
+  onClick(ctx, w, part) {
+    if (part === 'body') install(ctx, w);
+  },
+};
