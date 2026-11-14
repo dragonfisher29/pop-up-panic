@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DESKTOP_H, DESKTOP_W } from '../sim';
 import { POPUP_COPY, pickCopy } from './copy';
-import { countUp, fitDesktop, formatClock, toVirtual } from './layout';
+import { countUp, fitDesktop, formatClock, tapPx, toVirtual } from './layout';
 
 describe('fitDesktop', () => {
   it('fills an exact 16:9 viewport with no bars', () => {
@@ -73,5 +73,13 @@ describe('countUp', () => {
       prev = v;
     }
     expect(countUp(1000, 400, 800)).toBeGreaterThan(500);
+  });
+});
+
+describe('tapPx', () => {
+  it('lands at 44 CSS px or more on screen', () => {
+    for (const s of [0.3, 0.47, 0.54, 1, 1.5]) expect(tapPx(s) * s).toBeGreaterThanOrEqual(44);
+    expect(tapPx(1)).toBe(44);
+    expect(tapPx(0.5)).toBe(88);
   });
 });

@@ -18,6 +18,14 @@ export function fitDesktop(viewW: number, viewH: number): Fit {
   };
 }
 
+/** Smallest comfortable touch target, in CSS px (SPEC §11). */
+export const MIN_TAP_CSS_PX = 44;
+
+/** Virtual (desktop) px that render at ≥ MIN_TAP_CSS_PX on screen at this scale. */
+export function tapPx(scale: number): number {
+  return Math.ceil(MIN_TAP_CSS_PX / Math.max(0.1, scale));
+}
+
 export interface RectLike {
   left: number;
   top: number;

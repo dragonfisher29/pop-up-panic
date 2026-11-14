@@ -51,6 +51,12 @@ export class InputCapture {
     this.pending.push({ t: 'forceQuit', x: p.x, y: p.y });
   }
 
+  /** On-screen tool buttons (touch and mouse): Force Quit hits the topmost window, as the sim's fallback does. */
+  tool(which: 'forceQuit' | 'taskManager'): void {
+    if (!this.enabled) return;
+    this.pending.push(which === 'forceQuit' ? { t: 'forceQuit', x: -1, y: -1 } : { t: 'taskManager' });
+  }
+
   /** Clear everything between runs. */
   reset(): void {
     this.pending = [];
@@ -95,7 +101,7 @@ export class InputCapture {
     this.track(e);
     if (!this.enabled || e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest('[data-part]')) {
+    if (target.closest('[data-part], [data-tool]')) {
       e.preventDefault(); // keep focus off window buttons so Space stays Force Quit
       return;
     }

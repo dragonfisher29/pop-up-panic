@@ -371,6 +371,59 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 @keyframes puff-fade { from { opacity: 1; } to { opacity: 0; } }
 @keyframes ring-fade { from { opacity: 1; } to { opacity: 0; } }
 
+/* ---------- M6: tools as buttons, touch targets, rotate hint, dodge ring ---------- */
+.tool { background: none; border: 0; padding: 0 2px; font: inherit; color: inherit; cursor: pointer; }
+.tool:hover kbd { background: #ffffe0; }
+.tool:active kbd { border-color: var(--shadow) var(--light) var(--light) var(--shadow); }
+.tool.empty { cursor: default; }
+
+/*
+ * Touch: --tap is the virtual size that renders at ≥44 CSS px (set by fit() from the scale).
+ * Visible controls keep their look; an invisible ::after grows the hit area around them.
+ */
+.touch :is(.win [data-part], .strip [data-part], .tool, .begin, .wheel .btn, .picker-send,
+  .board-tab, .results-actions .btn, .menu-item, .about-ok) { position: relative; }
+.touch :is(.win [data-part], .strip [data-part], .tool, .begin, .wheel .btn, .picker-send,
+  .board-tab, .results-actions .btn, .menu-item, .about-ok)::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: max(100%, var(--tap)); height: max(100%, var(--tap)); translate: -50% -50%;
+}
+/* The wheels sit side by side, so they also grow for real: wider columns, taller arrows. */
+.touch .wheel .btn { width: max(44px, calc(var(--tap) * 0.8)); height: max(24px, calc(var(--tap) * 0.45)); font-size: 16px; }
+.touch .wheel-letter { width: max(44px, calc(var(--tap) * 0.8)); }
+.touch .picker-send { height: max(44px, calc(var(--tap) * 0.8)); }
+.touch .tools { gap: max(6px, calc(var(--tap) * 0.25)); }
+.touch .tool kbd { padding: 4px 8px; font-size: 13px; }
+
+.rotate { display: none; }
+@media (orientation: portrait) {
+  .touch .rotate {
+    position: fixed; inset: 0; z-index: 9000; display: grid; place-content: center; justify-items: center; gap: 24px;
+    padding: 16px; background: var(--desktop); color: #fff; text-align: center;
+    font: 700 20px/1.4 var(--pixel);
+  }
+  .rotate p { margin: 0; max-width: 18em; }
+}
+.rotate-phone {
+  width: 48px; height: 84px; border: 4px solid #fff; border-radius: 8px; box-shadow: 4px 4px 0 rgb(0 0 0 / 0.4);
+  animation: rotate-tip 2.4s steps(1) infinite;
+}
+@keyframes rotate-tip { 0%, 40% { rotate: 0deg; } 50%, 90% { rotate: -90deg; } }
+
+.fx-dodge {
+  position: absolute; width: 0; height: 0;
+  animation: dodge-fade 400ms steps(4) forwards;
+}
+.fx-dodge::before {
+  content: ''; position: absolute; left: calc(var(--r) * -1); top: calc(var(--r) * -1);
+  width: calc(var(--r) * 2); height: calc(var(--r) * 2); box-sizing: border-box;
+  border: 3px dashed var(--crt); border-radius: 50%;
+}
+@keyframes dodge-fade { from { opacity: 0.9; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .rotate-phone { animation: none; rotate: -90deg; }
+}
+
 /* Error guard: Blue Screen of Panic. Outside the scaled desktop, so sizes are real CSS px. */
 .bsod {
   position: fixed;

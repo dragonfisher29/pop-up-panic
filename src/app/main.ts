@@ -9,7 +9,7 @@ import { prompts, SYSTEM } from './copy';
 import { fxEvents, type FxEvent } from './events';
 import { InputCapture } from './input';
 import { Fx } from './fx';
-import { countUp, fitDesktop, formatClock } from './layout';
+import { countUp, fitDesktop, formatClock, tapPx, toVirtual } from './layout';
 import { Renderer } from './render';
 import { dailySeed, dayKey, formatCountdown, msUntilNextDay, puzzleNumber } from './daily';
 import { ramStrip, shareText } from './share';
@@ -81,8 +81,8 @@ app.innerHTML = `
         <div class="ram-fill"></div><span class="ram-label">RAM 10%</span>
       </div>
       <div class="tools">
-        <span class="tool tool-fq"><kbd>ALT+F4</kbd><span class="tool-count">×3</span></span>
-        <span class="tool tool-tm" title="${SYSTEM.taskManagerHint}"><kbd>CTRL+ALT+DEL</kbd></span>
+        <button class="tool tool-fq" type="button" tabindex="-1" data-tool="forceQuit"><kbd>ALT+F4</kbd><span class="tool-count">×3</span></button>
+        <button class="tool tool-tm" type="button" tabindex="-1" data-tool="taskManager" title="${SYSTEM.taskManagerHint}"><kbd>CTRL+ALT+DEL</kbd></button>
       </div>
       <div class="tray"><span class="clock">0:00</span></div>
     </div>
@@ -155,9 +155,10 @@ app.innerHTML = `
         <div class="body board-slot"></div>
       </div>
     </div>
-  </div>`;
+  </div>
+  <div class="rotate" role="alert"><div class="rotate-phone" aria-hidden="true"></div><p>${SYSTEM.rotateHint}</p></div>`;
 
-const $ = <T extends HTMLElement>(sel: string): T => app.querySelector<T>(sel)!;
+const $ =<T extends HTMLElement>(sel: string): T => app.querySelector<T>(sel)!;
 const desktop = $('.desktop');
 const titleScreen = $('.title-screen');
 const bootScreen = $('.boot-screen');
@@ -274,6 +275,8 @@ function fit(): void {
   desktop.style.left = `${f.left}px`;
   desktop.style.top = `${f.top}px`;
   desktop.style.transform = `scale(${f.scale})`;
+  // Touch targets: the virtual size that lands at ≥44 CSS px on screen at this scale.
+  desktop.style.setProperty('--tap', touch ? `${tapPx(f.scale)}px` : '0px');
 }
 window.addEventListener('resize', fit);
 fit();
@@ -424,7 +427,14 @@ $('.about-ok').addEventListener('click', () => show(about, false));
 desktop.addEventListener('pointerdown', (e) => {
   const t = e.target as HTMLElement;
   if (!menu.hidden && !t.closest('.menu') && !t.closest('.begin')) closeMenu();
+  if (phase === 'run' && e.pointerType === 'touch' && !t.closest('.taskbar')) {
+    const p = toVirtual(e.clientX, e.clientY, desktop.getBoundingClientRect());
+    fx.touchDown(p.x, p.y);
+  }
 });
+for (const btn of app.querySelectorAll<HTMLButtonElement>('[data-tool]')) {
+  btn.addEventListener('click', () => input.tool(btn.dataset.tool as 'forceQuit' | 'taskManager'));
+}
 
 // ---------- effects ----------
 function handleFx(events: readonly FxEvent[]): void {

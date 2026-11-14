@@ -1,6 +1,6 @@
 // App-only visual effects: puff, combo popups, shake, hang vignette, cursor trail, force-quit ring.
 // Reads GameState and FxEvents, never writes to sim state. All elements are pointer-events: none.
-import { DESKTOP_H, DESKTOP_W, ramPercent, type GameState } from '../sim';
+import { DESKTOP_H, DESKTOP_W, ramPercent, RUNNER_RADIUS, type GameState } from '../sim';
 import type { FxEvent } from './events';
 import { toVirtual } from './layout';
 
@@ -140,9 +140,15 @@ export class Fx {
     }
   }
 
+  /** Touch: show the circle the runner dodges around the touch-down point (SPEC §11). */
+  touchDown(x: number, y: number): void {
+    const el = this.spawn('fx-dodge', x, y);
+    el.style.setProperty('--r', `${RUNNER_RADIUS}px`);
+  }
+
   private spawn(cls: string, x: number, y: number, text?: string): HTMLElement {
     // Cap live transient elements so a flood of closes can't pile up DOM.
-    const live = this.layer.querySelectorAll('.fx-puff, .fx-combo, .fx-ring');
+    const live = this.layer.querySelectorAll('.fx-puff, .fx-combo, .fx-ring, .fx-dodge');
     if (live.length >= MAX_LIVE) live[0]!.remove();
     const el = document.createElement('div');
     el.className = cls;
