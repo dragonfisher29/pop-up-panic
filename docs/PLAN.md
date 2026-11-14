@@ -12,7 +12,7 @@ Run each milestone with `/milestone Mx`. Mark the status here when a milestone i
 | M3 Effects | DONE | Sat 17:30 | 2.5 h |
 | M4 Daily | DONE | Sun 09:30 | 2 h |
 | M5 Leaderboard and deploy | DONE | Sun 12:00 | 3 h |
-| M6 Ship | TODO | Sun 16:00 | 2.5 h |
+| M6 Ship | DONE | Sun 16:00 | 2.5 h |
 | Buffer / M5b replay check | — | Sun 19:00 | — |
 | M7 Brag (launch video) | TODO | Sun 20:00, or Mon | 1 h |
 
