@@ -5,5 +5,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "popup-panic"
-# Filled in after `npx wrangler d1 create popup-panic` (remote, owner approves).
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "44e5fd66-eb95-46bf-a1c1-72b825e658e7"
