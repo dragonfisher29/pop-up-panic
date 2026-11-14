@@ -1,4 +1,5 @@
 // Boot, screens (title → boot crawl → run → crash → results) and the fixed-timestep loop.
+import { guard } from './guard'; // first, so its error listeners are up before anything else runs
 import '@fontsource/pixelify-sans/400.css';
 import '@fontsource/pixelify-sans/700.css';
 import './styles.css';
@@ -664,6 +665,21 @@ $('.picker-send').addEventListener('click', () => onPickerKey('Enter'));
 let last = performance.now();
 let acc = 0;
 function frame(now: number): void {
+  if (guard.tripped) return;
+  try {
+    tick(now);
+  } catch (err) {
+    guard.trip(err);
+    return;
+  }
+  requestAnimationFrame(frame);
+}
+
+function tick(now: number): void {
+  // Dev only: `?panic` throws on the first run frame to check the Blue Screen of Panic.
+  if (import.meta.env.DEV && phase === 'run' && new URLSearchParams(location.search).has('panic')) {
+    throw new Error('?panic test');
+  }
   if (phase === 'run') {
     acc += now - last;
     let steps = 0;
@@ -689,7 +705,6 @@ function frame(now: number): void {
     paintCountdown();
   }
   last = now;
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 

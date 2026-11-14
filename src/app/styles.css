@@ -368,3 +368,40 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 @keyframes combo-fade { from { opacity: 1; } to { opacity: 0; } }
 @keyframes puff-fade { from { opacity: 1; } to { opacity: 0; } }
 @keyframes ring-fade { from { opacity: 1; } to { opacity: 0; } }
+
+/* Error guard: Blue Screen of Panic. Outside the scaled desktop, so sizes are real CSS px. */
+.bsod {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--title-a);
+  color: var(--light);
+  font-family: var(--pixel);
+  font-size: clamp(16px, 2.6vw, 24px);
+  text-align: center;
+}
+.bsod-box { max-width: 40em; }
+.bsod-title {
+  display: inline-block;
+  margin: 0 0 1em;
+  padding: 0 0.4em;
+  background: var(--face);
+  color: var(--title-a);
+  font-weight: 700;
+}
+.bsod-detail { opacity: 0.7; font-size: 0.75em; word-break: break-word; }
+.bsod-reboot {
+  min-width: 44px;
+  min-height: 44px;
+  margin-top: 1em;
+  padding: 0 1.2em;
+  border: 2px solid var(--light);
+  background: transparent;
+  color: var(--light);
+  font: inherit;
+  cursor: pointer;
+}
+.bsod-reboot:hover, .bsod-reboot:focus-visible { background: var(--light); color: var(--title-a); outline: none; }

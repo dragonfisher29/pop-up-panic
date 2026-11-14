@@ -145,4 +145,7 @@ export const SYSTEM = {
   uninstall: (name: string) => `Uninstall ${name}? (it will cry)`,
   forceQuitHint: (n: number, max: number) => `Force Quit: Space or right-click (${n}/${max})`,
   taskManagerHint: 'Task Manager: Shift (once per run)',
+  bsodTitle: 'Blue Screen of Panic',
+  bsodBody: 'Something broke (for real this time).',
+  bsodReboot: 'Reboot',
 } as const;
