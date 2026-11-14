@@ -77,3 +77,5 @@ Format: **Title** — body — buttons.
   - Daily: `Daily #{n}` — `Ranked. One shot. No pressure.` / `Ranked run done ({t}). Practice only.`
   - Endless: `Endless` — `Random seed. Local glory only.` / `Best {t}`
 - Error guard: `Blue Screen of Panic. Something broke (for real this time).` — [Reboot]
+- Touch (M6), replacing the key lines on phones: title `Tap a mode to boot PanicOS 97` (mode-key hint hidden) · boot `Tap to skip` · crash `Tap to pretend this never happened.` · picker `Tap ▲▼ to pick letters, then Send` (wheels start blank `___` for new players)
+- Rotate hint (M6, portrait on touch): `Turn your phone sideways. PanicOS 97 needs the whole desk.`

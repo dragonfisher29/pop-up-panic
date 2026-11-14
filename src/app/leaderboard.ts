@@ -9,12 +9,21 @@ export interface Picker {
   cursor: 0 | 1 | 2;
 }
 
+/** An unset wheel. New players start on `___` so nobody signs the wall as AAA by accident. */
+export const BLANK = '_';
+
 export function newPicker(saved: string | null): Picker {
-  const s = saved && /^[A-Z]{3}$/.test(saved) ? saved : 'AAA';
+  const s = saved && /^[A-Z]{3}$/.test(saved) ? saved : BLANK.repeat(3);
   return { letters: [s[0]!, s[1]!, s[2]!], cursor: 0 };
 }
 
+/** All three wheels hold a letter. */
+export function pickerReady(p: Picker): boolean {
+  return p.letters.every((l) => l !== BLANK);
+}
+
 function roll(letter: string, dir: 1 | -1): string {
+  if (letter === BLANK) return dir === 1 ? 'A' : 'Z';
   return String.fromCharCode(A + ((letter.charCodeAt(0) - A + dir + 26) % 26));
 }
 
@@ -41,6 +50,7 @@ export function pickerKey(p: Picker, key: string): PickerResult {
   if (key === 'ArrowLeft' || key === 'Backspace') return out({ ...p, cursor: clampCursor(p.cursor - 1) });
   if (key === 'ArrowRight') return out({ ...p, cursor: clampCursor(p.cursor + 1) });
   if (key === 'Enter') {
+    if (!pickerReady(p)) return out(p);
     const s = p.letters.join('');
     return isValidInitials(s) ? out(p, s) : out(p, null, true);
   }

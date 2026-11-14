@@ -1,11 +1,28 @@
 import { describe, expect, it, vi } from 'vitest';
-import { encodeInput, fetchBoard, newPicker, pickerKey, pickerTap, submitScore, type Submission } from './leaderboard';
+import { encodeInput, fetchBoard, newPicker, pickerKey, pickerReady, pickerTap, submitScore, type Submission } from './leaderboard';
 
 describe('initials picker', () => {
-  it('starts on the saved initials or AAA', () => {
+  it('starts on the saved initials, or blank so nobody sends AAA by accident', () => {
     expect(newPicker('NAD').letters.join('')).toBe('NAD');
-    expect(newPicker(null).letters.join('')).toBe('AAA');
-    expect(newPicker('bad!').letters.join('')).toBe('AAA');
+    expect(newPicker(null).letters.join('')).toBe('___');
+    expect(newPicker('bad!').letters.join('')).toBe('___');
+  });
+
+  it('a blank wheel rolls to A going down and Z going up', () => {
+    expect(pickerTap(newPicker(null), 0, 1).letters.join('')).toBe('A__');
+    expect(pickerTap(newPicker(null), 1, -1).letters.join('')).toBe('_Z_');
+  });
+
+  it('is ready to send only when all three wheels hold letters', () => {
+    expect(pickerReady(newPicker(null))).toBe(false);
+    expect(pickerReady(pickerKey(pickerKey(newPicker(null), 'a').picker, 'b').picker)).toBe(false);
+    expect(pickerReady(newPicker('NAD'))).toBe(true);
+  });
+
+  it('Enter on blanks neither submits nor says blocked', () => {
+    const r = pickerKey(pickerKey(newPicker(null), 'n').picker, 'Enter');
+    expect(r.submit).toBeNull();
+    expect(r.blocked).toBe(false);
   });
 
   it('wheels wrap A↔Z with up/down and move the cursor with left/right', () => {

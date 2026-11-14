@@ -145,7 +145,27 @@ export const SYSTEM = {
   uninstall: (name: string) => `Uninstall ${name}? (it will cry)`,
   forceQuitHint: (n: number, max: number) => `Force Quit: Space or right-click (${n}/${max})`,
   taskManagerHint: 'Task Manager: Shift (once per run)',
+  rotateHint: 'Turn your phone sideways. PanicOS 97 needs the whole desk.',
   bsodTitle: 'Blue Screen of Panic',
   bsodBody: 'Something broke (for real this time).',
   bsodReboot: 'Reboot',
 } as const;
+
+/** Prompts that name keys on desktop and taps on touch screens. */
+export function prompts(touch: boolean) {
+  return touch
+    ? {
+        titlePrompt: 'Tap a mode to boot PanicOS 97',
+        titleKeys: '',
+        bootSkip: 'Tap to skip',
+        crashPrompt: 'Tap to pretend this never happened.',
+        pickerHint: 'Tap ▲▼ to pick letters, then Send',
+      }
+    : {
+        titlePrompt: SYSTEM.titlePrompt,
+        titleKeys: SYSTEM.titleKeys,
+        bootSkip: SYSTEM.bootSkip,
+        crashPrompt: SYSTEM.crashPrompt,
+        pickerHint: SYSTEM.pickerHint,
+      };
+}

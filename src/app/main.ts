@@ -5,7 +5,7 @@ import '@fontsource/pixelify-sans/700.css';
 import './styles.css';
 import { createGame, DESKTOP_H, DESKTOP_W, MS_PER_TICK, ramPercent, step, survivalMs, type GameState } from '../sim';
 import { Sfx } from './audio';
-import { SYSTEM } from './copy';
+import { prompts, SYSTEM } from './copy';
 import { fxEvents, type FxEvent } from './events';
 import { InputCapture } from './input';
 import { Fx } from './fx';
@@ -18,6 +18,7 @@ import {
   fetchBoard,
   newPicker,
   pickerKey,
+  pickerReady,
   pickerTap,
   submitScore,
   type Board,
@@ -50,6 +51,11 @@ const BOOT_HOLD_MS = 700;
 const CRASH_LOCK_MS = 900;
 
 type Phase = 'title' | 'boot' | 'run' | 'crash' | 'results';
+
+/** Phones and tablets: tap wording, on-screen tools, bigger targets (SPEC §11). */
+const touch = matchMedia('(pointer: coarse)').matches;
+document.documentElement.classList.toggle('touch', touch);
+const P = prompts(touch);
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -86,8 +92,8 @@ app.innerHTML = `
         <button class="mode mode-daily" type="button" data-mode="daily"><b class="mode-name"></b><span class="mode-sub"></span></button>
         <button class="mode mode-endless" type="button" data-mode="endless"><b class="mode-name">${SYSTEM.modeEndless}</b><span class="mode-sub"></span></button>
       </div>
-      <p class="blink">${SYSTEM.titlePrompt}</p>
-      <p class="hint">${SYSTEM.titleKeys}</p>
+      <p class="blink">${P.titlePrompt}</p>
+      <p class="hint"${P.titleKeys ? "" : " hidden"}>${P.titleKeys}</p>
       <div class="board-slot">
         <section class="board" aria-label="${SYSTEM.boardTitle}">
           <div class="board-tabs" role="tablist">
@@ -101,12 +107,12 @@ app.innerHTML = `
     </div>
     <div class="screen boot-screen" hidden>
       <pre class="boot-log"></pre>
-      <p class="hint">${SYSTEM.bootSkip}</p>
+      <p class="hint">${P.bootSkip}</p>
     </div>
     <div class="screen crash-screen" hidden>
       <p class="crash-title">${SYSTEM.crashTitle}</p>
       <p>${SYSTEM.crashBody}</p>
-      <p class="crash-prompt">${SYSTEM.crashPrompt}</p>
+      <p class="crash-prompt">${P.crashPrompt}</p>
     </div>
     <div class="results-backdrop" hidden>
       <div class="dialog results" role="dialog" aria-labelledby="results-title">
@@ -125,14 +131,14 @@ app.innerHTML = `
                 .map(
                   (i) => `<div class="wheel" data-wheel="${i}">
                 <button class="btn wheel-up" type="button" tabindex="-1" aria-label="Previous letter">▲</button>
-                <span class="wheel-letter">A</span>
+                <span class="wheel-letter">_</span>
                 <button class="btn wheel-down" type="button" tabindex="-1" aria-label="Next letter">▼</button>
               </div>`,
                 )
                 .join('')}
               <button class="btn picker-send" type="button">${SYSTEM.pickerSend}</button>
             </div>
-            <p class="picker-hint">${SYSTEM.pickerHint}</p>
+            <p class="picker-hint">${P.pickerHint}</p>
             <p class="picker-status" role="status"></p>
           </div>
           <div class="results-copy" hidden><p>${SYSTEM.copyFailed}</p><textarea readonly rows="2"></textarea></div>
@@ -612,6 +618,7 @@ function paintPicker(): void {
     w.querySelector('.wheel-letter')!.textContent = picker.letters[i]!;
     w.classList.toggle('on', i === picker.cursor);
   });
+  $<HTMLButtonElement>('.picker-send').disabled = !pickerReady(picker);
 }
 
 function onPickerKey(key: string): boolean {
