@@ -65,4 +65,8 @@ Format: **Title** — body — buttons.
 - Crash body: `Your computer was ad-ministered to death.` · `Press any key to pretend this never happened.`
 - Wave fanfare: `NEW THREAT DETECTED: {Kind}`
 - Task Manager flash: `End Task ×{n}`
+- Title: `Press any key to boot PanicOS 97` · Boot hint: `Press any key to skip`
+- Begin menu: `Mute` · `About PanicOS`
+- About: **About PanicOS 97** — PanicOS 97. Now with 40% fewer crashes than PanicOS 96. Results not typical. — [Sure]
+- Results: **Run Report** — `You survived {t}` · `{n} pop-ups closed` · `{n} points` — [Retry]
 - Error guard: `Blue Screen of Panic. Something broke (for real this time).` — [Reboot]
