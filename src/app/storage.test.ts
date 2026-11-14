@@ -1,5 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadBest, loadDaily, loadSettings, saveBest, saveDailyIfFirst, saveSettings, type RunResult } from './storage';
+import {
+  clearPending,
+  loadBest,
+  loadDaily,
+  loadInitials,
+  loadPending,
+  loadSettings,
+  saveBest,
+  saveDailyIfFirst,
+  saveInitials,
+  savePending,
+  saveSettings,
+  type RunResult,
+} from './storage';
 
 function fakeStorage(): Storage {
   const m = new Map<string, string>();
@@ -46,6 +59,19 @@ describe('storage', () => {
     expect(loadBest('daily')).toBeNull();
   });
 
+  it('keeps initials and a pending ranked run until cleared', () => {
+    expect(loadInitials()).toBeNull();
+    saveInitials('NAD');
+    expect(loadInitials()).toBe('NAD');
+    localStorage.setItem('upp:initials', '"nope"');
+    expect(loadInitials()).toBeNull();
+    const p = { day: '2026-11-15', timeMs: 1000, points: 2, closes: 1, inputLog: [[60, 'end']] };
+    savePending(p);
+    expect(loadPending('2026-11-15')).toEqual(p);
+    clearPending('2026-11-15');
+    expect(loadPending('2026-11-15')).toBeNull();
+  });
+
   it('ignores corrupt values', () => {
     localStorage.setItem('upp:best:endless', '{not json');
     localStorage.setItem('upp:daily:2026-11-15', JSON.stringify({ timeMs: -1 }));
@@ -68,5 +94,7 @@ describe('storage when localStorage throws', () => {
     expect(loadDaily('2026-11-15')).toBeNull();
     expect(saveDailyIfFirst({ day: '2026-11-15', ...run(1) })).toBe(true);
     expect(saveBest('endless', run(1))).toBe(true);
+    expect(loadInitials()).toBeNull();
+    expect(() => clearPending('2026-11-15')).not.toThrow();
   });
 });

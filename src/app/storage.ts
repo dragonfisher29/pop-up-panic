@@ -1,5 +1,5 @@
 // localStorage wrapper. Every access is in try/catch: private windows and blocked storage must not break the game.
-// Keys (ARCHITECTURE §7): upp:settings · upp:daily:<day> · upp:best:endless · upp:best:daily
+// Keys (ARCHITECTURE §7): upp:settings · upp:daily:<day> · upp:best:endless · upp:best:daily · upp:initials · upp:pending:<day>
 
 export interface Settings {
   mute: boolean;
@@ -81,6 +81,41 @@ export function saveDailyIfFirst(r: DailyResult): boolean {
 
 export function loadBest(mode: BestMode): RunResult | null {
   return asRun(read(`upp:best:${mode}`));
+}
+
+export function loadInitials(): string | null {
+  const v = read('upp:initials');
+  return typeof v === 'string' && /^[A-Z]{3}$/.test(v) ? v : null;
+}
+
+export function saveInitials(s: string): void {
+  write('upp:initials', s);
+}
+
+/** The day's ranked run waiting to be sent (set at crash, cleared once the server accepts it). */
+export interface PendingRun {
+  day: string;
+  timeMs: number;
+  points: number;
+  closes: number;
+  inputLog: (number | string)[][];
+}
+
+export function loadPending(day: string): PendingRun | null {
+  const v = read(`upp:pending:${day}`) as PendingRun | null;
+  return v && typeof v === 'object' && Array.isArray(v.inputLog) && isCount(v.timeMs) ? { ...v, day } : null;
+}
+
+export function savePending(r: PendingRun): void {
+  write(`upp:pending:${r.day}`, r);
+}
+
+export function clearPending(day: string): void {
+  try {
+    localStorage.removeItem(`upp:pending:${day}`);
+  } catch {
+    // storage unavailable
+  }
 }
 
 /** Keeps the longer run (points break ties). Returns true if `r` is a new best. */

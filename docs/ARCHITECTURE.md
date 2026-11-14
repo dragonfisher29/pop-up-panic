@@ -80,7 +80,7 @@ The M0 starter only has `{ t: 'close', id }`. In M1 this becomes `click` with `p
 - `initials` matches `^[A-Z]{3}$` and isn't on the blocklist.
 - `0 < timeMs <= 600000`. The last tick in `inputLog` must be at least `timeMs / (1000/60) - 2`.
 - `closes <= inputLog.length` and `points <= closes * 8`.
-- `inputLog` is at most 200 KB once encoded.
+- `inputLog` is at most 1 MB once encoded (M5: raised from 200 KB — a 200 s run with a pointer move every tick is ~250 KB). The client always ends the log with `[crashTick, "end"]`.
 - Rate limit: 5 submissions per `(day, ip_hash)`. `ip_hash = SHA-256(ip + daily salt)`; raw IPs are never stored.
 - Keep only the best row per `(day, initials, ip_hash)`.
 - **M5b:** replay `inputLog` with `src/sim` against `dailySeed(day)` and require the replayed `timeMs` and `points` to match exactly.
