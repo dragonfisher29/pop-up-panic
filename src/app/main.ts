@@ -20,8 +20,10 @@ type Phase = 'title' | 'boot' | 'run' | 'crash' | 'results';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <div class="desktop" style="width:${DESKTOP_W}px;height:${DESKTOP_H}px">
+    <div class="strips"></div>
     <div class="windows"></div>
     <div class="hang" role="status" hidden></div>
+    <div class="notice" role="status" hidden></div>
     <div class="dialog about" role="dialog" aria-labelledby="about-title" hidden>
       <div class="titlebar"><span class="title" id="about-title">${SYSTEM.aboutTitle}</span></div>
       <div class="body"><p>${SYSTEM.aboutBody}</p><button class="btn about-ok" type="button">${SYSTEM.aboutOk}</button></div>
@@ -37,6 +39,10 @@ app.innerHTML = `
       <button class="begin" type="button" aria-haspopup="menu" aria-expanded="false"><span class="begin-logo" aria-hidden="true"></span>Begin</button>
       <div class="ram" role="meter" aria-label="RAM used" aria-valuemin="0" aria-valuemax="100">
         <div class="ram-fill"></div><span class="ram-label">RAM 10%</span>
+      </div>
+      <div class="tools">
+        <span class="tool tool-fq"><kbd>ALT+F4</kbd><span class="tool-count">×3</span></span>
+        <span class="tool tool-tm" title="${SYSTEM.taskManagerHint}"><kbd>CTRL+ALT+DEL</kbd></span>
       </div>
       <div class="tray"><span class="clock">0:00</span></div>
     </div>
@@ -79,10 +85,14 @@ const about = $('.about');
 
 const renderer = new Renderer({
   layer: $('.windows'),
+  strips: $('.strips'),
   ramFill: $('.ram-fill'),
   ramLabel: $('.ram-label'),
   clock: $('.clock'),
   hang: $('.hang'),
+  notice: $('.notice'),
+  forceQuit: $('.tool-fq'),
+  taskManager: $('.tool-tm'),
 });
 const input = new InputCapture(desktop);
 const settings = loadSettings();
@@ -173,7 +183,14 @@ window.addEventListener('keydown', (e) => {
     }
     return;
   }
+  if (phase === 'run') {
+    if (input.key(e)) e.preventDefault();
+    return;
+  }
   onAnyKey();
+});
+window.addEventListener('keyup', (e) => {
+  if (phase === 'run' && e.key === ' ') e.preventDefault(); // no button activation on Space release
 });
 for (const el of [titleScreen, bootScreen, crashScreen]) el.addEventListener('pointerdown', onAnyKey);
 $('.retry').addEventListener('click', startRun);

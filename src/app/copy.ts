@@ -106,4 +106,10 @@ export const SYSTEM = {
   aboutTitle: 'About PanicOS 97',
   aboutBody: 'PanicOS 97. Now with 40% fewer crashes than PanicOS 96. Results not typical.',
   aboutOk: 'Sure',
+  newThreat: (kind: string) => `NEW THREAT DETECTED: ${kind}`,
+  endTask: (n: number) => `End Task ×${n}`,
+  antivirusClosed: 'You closed your antivirus. Bold.',
+  uninstall: (name: string) => `Uninstall ${name}? (it will cry)`,
+  forceQuitHint: (n: number, max: number) => `Force Quit: Space or right-click (${n}/${max})`,
+  taskManagerHint: 'Task Manager: Shift (once per run)',
 } as const;

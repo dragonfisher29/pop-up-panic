@@ -161,7 +161,68 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .crash-title { background: var(--face); color: var(--title-a); padding: 2px 12px; font-weight: 700; margin-bottom: 20px !important; }
 .crash-prompt { margin-top: 28px !important; animation: blink 1s steps(1) infinite; }
 
+/* ---------- M2: kind bodies ---------- */
+.win .body .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.win .actions { margin-top: auto; display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.win .actions .btn { align-self: auto; min-width: 56px; height: 26px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+.win .link {
+  background: none; border: 0; padding: 0; margin-right: auto; cursor: pointer;
+  font: 400 11px var(--sans); color: var(--title-b); text-decoration: underline;
+}
+.kind-fakeX .x { width: 34px; height: 20px; background: var(--alert); color: #fff; }
+.kind-fakeX .x svg { width: 14px; height: 14px; }
+.kind-fakeX .x:hover { animation: wobble 300ms steps(4) infinite; }
+.kind-prize .badge, .kind-toolbar .badge { background: var(--crt); }
+.kind-prize .count { font-family: var(--pixel); font-size: 18px; color: var(--alert); }
+.kind-prize .claim { font-family: var(--pixel); font-weight: 700; background: #ffd23a; }
+.kind-virusScan .badge { background: var(--alert); color: #fff; }
+.kind-antivirus .titlebar, .kind-antivirus.active .titlebar { background: linear-gradient(90deg, #1c6b2a, #2a9d3a); color: #fff; }
+.kind-antivirus .badge { background: var(--crt); }
+
+/* Telegraph (300 ms): title bar flashes, window shakes. */
+.win.tell .titlebar { animation: tell-flash 100ms steps(1) infinite; }
+.win.tell { animation: wobble 150ms steps(3) infinite; }
+.kind-antivirus.tell .titlebar { animation: none; background: var(--crt); color: var(--ink); }
+.kind-antivirus.tell { animation: none; }
+@keyframes tell-flash { 50% { background: var(--alert); color: #fff; } }
+@keyframes wobble { 0%, 100% { translate: 0 0; } 33% { translate: -2px 1px; } 66% { translate: 2px -1px; } }
+
+/* ---------- toolbar strips ---------- */
+.strips { position: absolute; left: 0; right: 0; top: 0; z-index: 1; }
+.strip {
+  position: absolute; left: 0; right: 0; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 8px;
+  background: var(--face); border-bottom: 2px solid var(--dark); box-shadow: inset 0 1px 0 var(--light);
+  font: 700 14px var(--pixel);
+}
+.strip-search { flex: 1; max-width: 420px; height: 24px; font: 400 12px var(--sans); color: var(--dark);
+  border: 2px solid; border-color: var(--dark) var(--light) var(--light) var(--dark); background: var(--light); }
+.tray-icon {
+  margin-left: auto; width: 28px; height: 26px; cursor: pointer; font: 700 14px var(--sans); color: var(--alert);
+  background: var(--face); border: 2px solid; border-color: var(--light) var(--shadow) var(--shadow) var(--light);
+}
+
+/* ---------- notices (fanfare, End Task, penalty) ---------- */
+.notice {
+  position: absolute; z-index: 2; left: 50%; top: 64px; transform: translateX(-50%);
+  padding: 6px 16px; font: 700 22px var(--pixel); white-space: nowrap;
+  background: var(--ink); color: var(--crt); border: 2px solid var(--crt); box-shadow: 4px 4px 0 rgb(0 0 0 / 0.5);
+}
+.notice[data-kind='fanfare'] { animation: blink 300ms steps(1) 4; }
+.notice[data-kind='flash'] { background: var(--title-a); color: #fff; border-color: #fff; font-size: 34px; }
+.notice[data-kind='penalty'] { background: var(--alert); color: #fff; border-color: var(--ink); }
+
+/* ---------- taskbar tools ---------- */
+.tools { display: flex; gap: 6px; }
+.tool { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+.tool kbd {
+  font: 700 11px var(--pixel); padding: 2px 5px; background: var(--light); color: var(--ink);
+  border: 2px solid; border-color: var(--light) var(--shadow) var(--shadow) var(--light);
+}
+.tool.empty { opacity: 0.4; }
+
 @media (prefers-reduced-motion: reduce) {
   .blink, .crash-prompt { animation: none; }
   .ram-fill { transition: none; }
+  .win.tell, .kind-fakeX .x:hover, .notice { animation: none; }
+  .win.tell .titlebar { animation: none; background: var(--alert); color: #fff; }
 }

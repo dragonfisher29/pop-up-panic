@@ -24,6 +24,31 @@ export class InputCapture {
     desktop.addEventListener('pointerup', (e) => this.up(e));
     desktop.addEventListener('pointercancel', (e) => this.up(e));
     desktop.addEventListener('click', (e) => this.click(e));
+    desktop.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      this.track(e);
+      this.forceQuit();
+    });
+  }
+
+  /** Keyboard during a run: Space = Force Quit at the cursor, Shift = Task Manager. Returns true if used. */
+  key(e: KeyboardEvent): boolean {
+    if (!this.enabled) return false;
+    if (e.key === ' ') {
+      this.forceQuit();
+      return true;
+    }
+    if (e.key === 'Shift') {
+      this.pending.push({ t: 'taskManager' });
+      return true;
+    }
+    return false;
+  }
+
+  private forceQuit(): void {
+    if (!this.enabled) return;
+    const p = this.pointer ?? { x: -1, y: -1 };
+    this.pending.push({ t: 'forceQuit', x: p.x, y: p.y });
   }
 
   /** Clear everything between runs. */
@@ -70,8 +95,12 @@ export class InputCapture {
     this.track(e);
     if (!this.enabled || e.button !== 0) return;
     const target = e.target as HTMLElement;
+    if (target.closest('[data-part]')) {
+      e.preventDefault(); // keep focus off window buttons so Space stays Force Quit
+      return;
+    }
     const winEl = target.closest<HTMLElement>('.win[data-id]');
-    if (!winEl || target.closest('[data-part]')) return;
+    if (!winEl) return;
     const id = Number(winEl.dataset.id);
     this.pending.push({ t: 'focus', id });
     const w = this.latest?.windows.find((v) => v.id === id);
@@ -91,7 +120,7 @@ export class InputCapture {
     if (!this.enabled) return;
     const target = e.target as HTMLElement;
     const btn = target.closest<HTMLElement>('[data-part]');
-    const winEl = target.closest<HTMLElement>('.win[data-id]');
+    const winEl = target.closest<HTMLElement>('.win[data-id], .strip[data-id]');
     if (!btn || !winEl) return;
     this.pending.push({ t: 'click', id: Number(winEl.dataset.id), part: btn.dataset.part as WindowPart });
   }
