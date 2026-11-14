@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DESKTOP_H, DESKTOP_W } from '../sim';
 import { POPUP_COPY, pickCopy } from './copy';
-import { fitDesktop, formatClock, toVirtual } from './layout';
+import { countUp, fitDesktop, formatClock, toVirtual } from './layout';
 
 describe('fitDesktop', () => {
   it('fills an exact 16:9 viewport with no bars', () => {
@@ -54,5 +54,24 @@ describe('pickCopy', () => {
     const titles = new Set(Array.from({ length: 30 }, (_, i) => pickCopy(42, i, 'ad').title));
     expect(titles.size).toBeGreaterThan(3);
     expect(POPUP_COPY.ad.length).toBe(12);
+  });
+});
+
+describe('countUp', () => {
+  it('starts at 0 and ends exactly on target', () => {
+    expect(countUp(137, 0, 800)).toBe(0);
+    expect(countUp(137, 800, 800)).toBe(137);
+    expect(countUp(137, 5000, 800)).toBe(137);
+  });
+
+  it('is an integer, monotonic and eases out', () => {
+    let prev = 0;
+    for (let ms = 0; ms <= 800; ms += 16) {
+      const v = countUp(1000, ms, 800);
+      expect(Number.isInteger(v)).toBe(true);
+      expect(v).toBeGreaterThanOrEqual(prev);
+      prev = v;
+    }
+    expect(countUp(1000, 400, 800)).toBeGreaterThan(500);
   });
 });

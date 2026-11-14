@@ -7,7 +7,8 @@ import { Sfx } from './audio';
 import { SYSTEM } from './copy';
 import { fxEvents, type FxEvent } from './events';
 import { InputCapture } from './input';
-import { fitDesktop, formatClock } from './layout';
+import { Fx } from './fx';
+import { countUp, fitDesktop, formatClock } from './layout';
 import { Renderer } from './render';
 import { loadSettings, saveSettings } from './storage';
 
@@ -96,6 +97,7 @@ const renderer = new Renderer({
   forceQuit: $('.tool-fq'),
   taskManager: $('.tool-tm'),
 });
+const fx = new Fx(desktop, $('.windows'));
 const input = new InputCapture(desktop);
 const settings = loadSettings();
 
@@ -148,6 +150,7 @@ function startRun(): void {
   show(results, false);
   closeMenu();
   renderer.clear();
+  fx.clear();
   state = createGame(newSeed());
   prevState = state;
   input.reset();
@@ -168,9 +171,8 @@ function showResults(): void {
   if (performance.now() - crashAt < CRASH_LOCK_MS) return;
   phase = 'results';
   show(crashScreen, false);
-  $('.results-time').textContent = SYSTEM.survived(formatClock(survivalMs(state)));
-  $('.results-closes').textContent = SYSTEM.closes(state.closes);
-  $('.results-points').textContent = SYSTEM.points(state.points);
+  countStart = performance.now();
+  paintResults(countStart);
   show(results, true);
   $<HTMLButtonElement>('.retry').focus();
 }
@@ -263,7 +265,17 @@ function handleFx(events: readonly FxEvent[]): void {
         break;
     }
   }
-  // FX HOOK: route `events` to visual effects here (pop-in, puff, combo popups, shake) in later M3 tasks.
+  fx.handle(events, performance.now());
+}
+
+// ---------- results count-up ----------
+const COUNT_MS = 800;
+let countStart = 0;
+function paintResults(now: number): void {
+  const el = now - countStart;
+  $('.results-time').textContent = SYSTEM.survived(formatClock(countUp(survivalMs(state), el, COUNT_MS)));
+  $('.results-closes').textContent = SYSTEM.closes(countUp(state.closes, el, COUNT_MS));
+  $('.results-points').textContent = SYSTEM.points(countUp(state.points, el, COUNT_MS));
 }
 
 // ---------- loop ----------
@@ -282,10 +294,12 @@ function frame(now: number): void {
     if (steps === MAX_STEPS_PER_FRAME) acc = 0;
     renderer.render(state);
     handleFx(fxEvents(prevState, state));
+    fx.frame(state, now);
     if (state.status === 'running') sfx.alarm(ramPercent(state), now);
     prevState = state;
     if (state.status === 'crashed') enterCrash();
   }
+  if (phase === 'results' && now - countStart <= COUNT_MS + 50) paintResults(now);
   last = now;
   requestAnimationFrame(frame);
 }

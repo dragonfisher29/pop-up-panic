@@ -105,7 +105,10 @@ export class Renderer {
   private createWindow(s: GameState, w: Win): HTMLElement {
     const copy = pickCopy(s.seed, w.id, w.kind, w.stage, w.stageCount);
     const el = document.createElement('div');
-    el.className = `win kind-${w.kind}`;
+    el.className = `win kind-${w.kind} pop-in`;
+    el.addEventListener('animationend', (e) => {
+      if (e.animationName === 'pop-in') el.classList.remove('pop-in');
+    });
     el.dataset.id = String(w.id);
     el.style.width = `${w.w}px`;
     el.style.height = `${w.h}px`;

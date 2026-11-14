@@ -220,9 +220,81 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 }
 .tool.empty { opacity: 0.4; }
 
+/* ---------- M3 effects (all pointer-events: none) ---------- */
+.fx-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.fx-layer * { pointer-events: none; }
+
+.win.pop-in { transform-origin: 50% 50%; animation: pop-in 67ms steps(4) both; }
+@keyframes pop-in { from { transform: scale(0.2); } to { transform: scale(1); } }
+
+.fx-puff { position: absolute; width: 0; height: 0; animation: puff-life 250ms steps(5) forwards; }
+.fx-puff i {
+  position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; background: #fff;
+  animation: puff-out 250ms steps(5) forwards;
+}
+.fx-puff i.g { background: var(--dark); width: 6px; height: 6px; }
+@keyframes puff-out { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+@keyframes puff-life { to { opacity: 0.99; } }
+
+.fx-combo {
+  position: absolute; transform: translate(-50%, 0); white-space: nowrap;
+  font: 700 40px/1 var(--pixel); color: #ffd23a; letter-spacing: 0.02em;
+  text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink);
+  animation: combo-float 600ms steps(12) forwards;
+}
+@keyframes combo-float {
+  from { translate: 0 0; opacity: 1; }
+  70% { opacity: 1; }
+  to { translate: 0 -64px; opacity: 0; }
+}
+
+.fx-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgb(212 40 44 / 0.55) 100%);
+  animation: vignette-pulse 1.4s ease-in-out infinite;
+}
+@keyframes vignette-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+.fx-dot { position: absolute; left: 0; top: 0; width: 6px; height: 6px; background: var(--crt); box-shadow: 0 0 0 1px var(--ink); }
+
+.fx-ring {
+  position: absolute; width: 0; height: 0;
+  animation: ring-out 250ms steps(5) forwards;
+}
+.fx-ring::before {
+  content: ''; position: absolute; left: -30px; top: -30px; width: 60px; height: 60px;
+  border: 4px solid #fff; border-radius: 0; box-shadow: 0 0 0 2px var(--ink);
+}
+@keyframes ring-out { from { transform: scale(0.3); opacity: 1; } to { transform: scale(1.2); opacity: 0; } }
+
+/* hang countdown: big and readable */
+.hang { font-size: 34px; padding: 8px 22px; box-shadow: 6px 6px 0 rgb(0 0 0 / 0.5); }
+
+/* crash screen: CRT scanlines and vignette over the existing palette */
+.crash-screen::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.28) 0 2px, transparent 2px 4px);
+}
+.crash-screen::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.5) 100%);
+}
+.crash-screen > p { text-shadow: 0 0 0 var(--crt); }
+.crash-prompt { color: var(--crt); }
+
 @media (prefers-reduced-motion: reduce) {
+  .win.pop-in { animation: pop-in-fade 67ms steps(4) both; }
+  .fx-combo { animation: combo-fade 600ms steps(4) forwards; translate: none; }
+  .fx-puff i { animation: puff-fade 250ms steps(5) forwards; }
+  .fx-ring { animation: ring-fade 250ms steps(5) forwards; }
+  .fx-vignette { animation: none; opacity: 0.8; }
+  .fx-dot { display: none; }
   .blink, .crash-prompt { animation: none; }
   .ram-fill { transition: none; }
   .win.tell, .kind-fakeX .x:hover, .notice { animation: none; }
   .win.tell .titlebar { animation: none; background: var(--alert); color: #fff; }
 }
+@keyframes pop-in-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes combo-fade { from { opacity: 1; } to { opacity: 0; } }
+@keyframes puff-fade { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ring-fade { from { opacity: 1; } to { opacity: 0; } }

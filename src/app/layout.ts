@@ -38,3 +38,12 @@ export function formatClock(ms: number): string {
   const sec = Math.floor(Math.max(0, ms) / 1000);
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
+
+/** Integer count-up from 0 to `target` with ease-out; exactly `target` once `elapsedMs >= durationMs`. */
+export function countUp(target: number, elapsedMs: number, durationMs: number): number {
+  if (elapsedMs >= durationMs || durationMs <= 0) return target;
+  if (elapsedMs <= 0) return 0;
+  const t = elapsedMs / durationMs;
+  const eased = 1 - (1 - t) ** 3;
+  return Math.min(target, Math.floor(target * eased));
+}
