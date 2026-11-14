@@ -58,6 +58,8 @@ export interface GameState {
   burstNextTick: number;
   closes: number;
   combo: number;
+  /** highest combo reached this run (results screen, share text) */
+  bestCombo: number;
   lastCloseTick: number;
   points: number;
   crashTick: number | null;

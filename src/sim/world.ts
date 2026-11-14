@@ -108,6 +108,7 @@ export function makeCtx(s: Draft, kinds: KindTable): Ctx {
       if (present.length === 0) return;
       ctx.remove(present);
       s.combo = s.tick - s.lastCloseTick <= COMBO_WINDOW_TICKS ? Math.min(s.combo + 1, COMBO_MAX) : 1;
+      s.bestCombo = Math.max(s.bestCombo, s.combo);
       s.lastCloseTick = s.tick;
       s.closes += present.length;
       s.points += s.combo * present.length;

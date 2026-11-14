@@ -40,6 +40,7 @@ export function createGame(seed: number): GameState {
     burstNextTick: 0,
     closes: 0,
     combo: 0,
+    bestCombo: 0,
     lastCloseTick: -1_000_000,
     points: 0,
     crashTick: null,

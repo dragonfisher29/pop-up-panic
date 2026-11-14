@@ -84,6 +84,19 @@ describe('step', () => {
     expect(s.points).toBe(1 + 2 + 3);
   });
 
+  it('remembers the best combo after the combo resets', () => {
+    let s = run(3, 600);
+    expect(s.bestCombo).toBe(0);
+    const ids = s.windows.slice(0, 4).map((w) => w.id);
+    expect(ids.length).toBe(4);
+    for (const id of ids.slice(0, 3)) s = step(s, [close(id)]);
+    expect(s.bestCombo).toBe(3);
+    for (let i = 0; i < 60; i++) s = step(s, []);
+    s = step(s, [close(ids[3]!)]);
+    expect(s.combo).toBe(1);
+    expect(s.bestCombo).toBe(3);
+  });
+
   it('crashes after the hang fuse when nobody closes anything', () => {
     const s = run(77, 60 * 120);
     expect(s.status).toBe('crashed');
