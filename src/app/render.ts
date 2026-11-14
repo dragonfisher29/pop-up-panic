@@ -107,7 +107,7 @@ export class Renderer {
     const el = document.createElement('div');
     el.className = `win kind-${w.kind} pop-in`;
     el.addEventListener('animationend', (e) => {
-      if (e.animationName === 'pop-in') el.classList.remove('pop-in');
+      if (e.animationName === 'pop-in' || e.animationName === 'pop-in-fade') el.classList.remove('pop-in');
     });
     el.dataset.id = String(w.id);
     el.style.width = `${w.w}px`;

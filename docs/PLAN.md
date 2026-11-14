@@ -9,7 +9,7 @@ Run each milestone with `/milestone Mx`. Mark the status here when a milestone i
 | M0 Setup check | TODO | Sat 09:00 | 0.5 h |
 | M1 Desktop | DONE | Sat 09:30 | 2.5 h |
 | M2 Chaos | DONE | Sat 13:30 | 3 h |
-| M3 Effects | TODO | Sat 17:30 | 2.5 h |
+| M3 Effects | DONE | Sat 17:30 | 2.5 h |
 | M4 Daily | TODO | Sun 09:30 | 2 h |
 | M5 Leaderboard and deploy | TODO | Sun 12:00 | 3 h |
 | M6 Ship | TODO | Sun 16:00 | 2.5 h |
