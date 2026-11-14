@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- A tiny PanicOS 97 pop-up: grey window, blue title bar, red alert badge. -->
+  <rect x="1" y="3" width="30" height="26" fill="#000"/>
+  <rect x="2" y="4" width="28" height="24" fill="#c3c3c3"/>
+  <rect x="2" y="4" width="28" height="6" fill="#0a1a6b"/>
+  <rect x="24" y="5" width="5" height="4" fill="#c3c3c3"/>
+  <rect x="8" y="13" width="16" height="13" fill="#d4282c"/>
+  <rect x="15" y="15" width="2" height="6" fill="#fff"/>
+  <rect x="15" y="23" width="2" height="2" fill="#fff"/>
+</svg>
