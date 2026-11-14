@@ -111,6 +111,11 @@ export const CONFIRM_OFFSET = 24;
 
 export const STRIP_H = 40;
 export const STRIP_MAX = 4;
+/** Number of strip names the app has copy for (changing it changes replays). */
+export const STRIP_NAME_COUNT = 4;
+
+/** Balance bot: one click every N ticks (20 = 3 clicks/s). Bot-only, not gameplay. */
+export const BOT_CLICK_EVERY = 20;
 
 export const ANTIVIRUS_BITE_TICKS = 4 * TICK_HZ;
 export const ANTIVIRUS_PENALTY_RAM = 15_000;

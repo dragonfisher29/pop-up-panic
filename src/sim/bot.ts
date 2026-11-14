@@ -1,10 +1,8 @@
 // Balance-bot policy (PLAN M2): every CLICK_EVERY ticks, act on the oldest hostile thing with its
 // correct counter. Pure, so the determinism test and scripts/sim-bot.ts share it.
+import { BOT_CLICK_EVERY } from './constants';
 import type { GameState, Input, Win, WindowPart } from './types';
 import { isHostile } from './world';
-
-/** 3 clicks per second. */
-export const BOT_CLICK_EVERY = 20;
 
 const COUNTER: Record<Win['kind'], WindowPart> = {
   ad: 'close',
