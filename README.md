@@ -68,18 +68,6 @@ A small game with serious engineering behind it.
 - **It never shows a dead page.** If anything throws, you get a *Blue Screen of Panic* with a Reboot button.
 - **Playable on phones.** Landscape scaling, on-screen panic buttons and 44 px touch targets.
 
-## 🤖 Built in one weekend with Claude Code
-
-Pop-Up Panic went from idea to live, global-leaderboard game in a weekend, built with [Claude Code](https://claude.com/claude-code) working as an orchestrated team:
-
-- A **written game spec** and **milestone plan** (`docs/`) drove the work, one milestone per session.
-- **Test-driven development** for every rule: a failing test first, then the code.
-- **Specialist subagents**: a `sim-guardian` that rejects any change breaking determinism, a `milestone-reviewer` that must approve each milestone, and a `test-runner` that keeps logs out of the way.
-- **Hooks as guardrails**: sim tests re-run on every edit, and the owner's spec can't be changed by the AI.
-- **Real playtests**, turned straight into changes (the runner got nerfed, and the game went from Daily mode to one all-time board).
-
-The whole setup lives in [`CLAUDE.md`](CLAUDE.md) and [`claude-setup/`](claude-setup/) if you want to borrow it.
-
 ## 🚀 Run it locally
 
 ```bash
