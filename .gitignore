@@ -10,3 +10,12 @@ Thumbs.db
 coverage/
 brag-output/*.mp4
 brag-output/**/renders/
+
+# local dev tooling (kept out of the public repo)
+CLAUDE.md
+.claude/
+claude-setup/
+scripts/setup.ps1
+scripts/install-skills.ps1
+brag-output/
+docs/SPEC-update.patch

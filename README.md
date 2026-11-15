@@ -83,8 +83,6 @@ npm run dev
 | `npm run sim:bot` | 200-run balance report |
 | `npm run dev:api` | Local leaderboard on :8788 (after a build) |
 
-On Windows, `scripts/setup.ps1` installs everything in one go.
-
 ## 📁 What's in here
 
 | Path | What |
