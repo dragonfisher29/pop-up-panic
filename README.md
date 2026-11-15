@@ -96,8 +96,6 @@ On Windows, `scripts/setup.ps1` installs everything in one go.
 | `docs/ARCHITECTURE.md` | Code layout, determinism rules, API |
 | `docs/PLAN.md` | The weekend plan, milestone by milestone |
 | `docs/COPY.md` | Every in-game joke |
-| `CLAUDE.md`, `claude-setup/` | The Claude Code setup: skills, subagents, hooks |
-
 ---
 
 <div align="center">
