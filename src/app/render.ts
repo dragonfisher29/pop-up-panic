@@ -80,6 +80,7 @@ export class Renderer {
       const z = String(w.z);
       if (el.style.zIndex !== z) el.style.zIndex = z;
       el.classList.toggle('tell', isTelling(s, w));
+      if (w.kind === 'runner') el.classList.toggle('tired', w.stage === 2);
       if (w.kind === 'prize') {
         const t = el.querySelector<HTMLElement>('.count');
         const left = String(secondsLeft(s, w));

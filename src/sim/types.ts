@@ -20,9 +20,9 @@ export interface Win {
   tellUntilTick: number;
   /** Kind-specific timer tick (prize payout, antivirus next bite). -1 = none. */
   timerTick: number;
-  /** Kind-specific stage (runner: 0 calm / 1 alarmed; confirm: chain index). */
+  /** Kind-specific stage (runner: 0 calm / 1 alarmed / 2 tired; confirm: chain index). */
   stage: number;
-  /** confirm: total stages in this chain. */
+  /** confirm: total stages in this chain. runner: ticks spent fleeing. */
   stageCount: number;
   /** confirm: id of the chain's first window. 0 = none. */
   link: number;

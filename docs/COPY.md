@@ -30,6 +30,7 @@ Format: **Title** — body — buttons.
 - **Shy Window** — Please don't look at me. — [X]
 - **Window.exe has legs** — Nobody knows how. — [X]
 - **Speedy Deals** — These deals move FAST. Literally. — [X]
+- Tired state (title bar suffix, after 1.5 s of dodging): *zzz (out of breath)*
 
 ## prize (countdown)
 - **YOU WON A YACHT** — Claim within {t}s or it sinks. — [CLAIM] [X]

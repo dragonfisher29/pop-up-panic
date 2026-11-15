@@ -122,8 +122,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .board-dialog[hidden] { display: none; }
 .board-dialog .body { padding: 8px; gap: 0; }
 .board { display: flex; flex-direction: column; gap: 6px; }
-.board-tabs { display: flex; gap: 4px; }
-.board-tab { flex: 1; padding: 4px 0; cursor: pointer; font: 700 13px var(--pixel); }
+.board .board-heading { margin: 0; text-align: center; font: 700 13px var(--pixel); }
 .board-list { margin: 0; padding: 0; list-style: none; height: 300px; overflow-y: auto;
   font: 400 15px var(--pixel); }
 .board-row, .board-gap { display: grid; grid-template-columns: 3ch 1fr auto; gap: 8px; padding: 1px 6px; }
@@ -131,16 +130,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .board-row .rank { text-align: right; }
 .board .board-note { margin: 0; font-size: 12px; min-height: 1.2em; }
 
-/* in the results window: sunken white list, bevelled tabs */
-.board-dialog .board-tab { background: var(--face); border: 2px solid; border-color: var(--light) var(--shadow) var(--shadow) var(--light); }
-.board-dialog .board-tab[aria-selected='true'] { border-color: var(--shadow) var(--light) var(--light) var(--shadow); background: #d8d8d8; }
+/* in the results window: sunken white list */
 .board-dialog .board-list { background: var(--light); border: 2px solid; border-color: var(--dark) var(--light) var(--light) var(--dark); }
 .board-dialog .board-row.mine { background: var(--title-a); color: #fff; }
 
 /* on the title screen: green CRT panel on the right */
 .title-screen .board-slot { position: absolute; right: 32px; top: 50%; transform: translateY(-50%); width: 240px; }
-.title-screen .board-tab { background: #000; color: #1c9a3e; border: 2px solid #1c9a3e; }
-.title-screen .board-tab[aria-selected='true'] { color: var(--crt); border-color: var(--crt); background: #0b2a14; }
+.title-screen .board-heading { color: var(--crt); }
 .title-screen .board-list { height: 260px; border: 2px solid #1c9a3e; color: #8fdca4; }
 .title-screen .board-row.mine { color: #000; background: var(--crt); }
 .title-screen .board-note { color: #1c9a3e; }
@@ -255,6 +251,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .win.tell .titlebar { animation: tell-flash 100ms steps(1) infinite; }
 .win.tell { animation: wobble 150ms steps(3) infinite; }
 .kind-antivirus.tell .titlebar { animation: none; background: var(--crt); color: var(--ink); }
+/* runner out of stamina: grey title bar + "zzz", it no longer dodges */
+.kind-runner.tired .titlebar { background: #7b7b7b; }
+.kind-runner.tired .titlebar::after { content: 'zzz (out of breath)'; margin-left: auto; padding-right: 28px; font-style: italic; }
 .kind-antivirus.tell { animation: none; }
 @keyframes tell-flash { 50% { background: var(--alert); color: #fff; } }
 @keyframes wobble { 0%, 100% { translate: 0 0; } 33% { translate: -2px 1px; } 66% { translate: 2px -1px; } }

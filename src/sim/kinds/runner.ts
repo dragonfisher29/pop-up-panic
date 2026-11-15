@@ -1,7 +1,9 @@
 // runner: slides away when the cursor comes within RUNNER_RADIUS px, at RUNNER_SPEED px/tick,
 // bounded by the play area. The first time it notices the cursor its title bar flashes for
-// TELL_TICKS (stage 0 -> 1) before it moves. Counter: trap it in a corner, or Force Quit.
-import { RUNNER_RADIUS, RUNNER_SPEED, TELL_TICKS } from '../constants';
+// TELL_TICKS (stage 0 -> 1) before it moves. After RUNNER_STAMINA_TICKS of actual movement
+// (counted in stageCount) it tires (stage 2) and stops dodging for good.
+// Counter: trap it in a corner, tire it out, or Force Quit.
+import { RUNNER_RADIUS, RUNNER_SPEED, RUNNER_STAMINA_TICKS, TELL_TICKS } from '../constants';
 import type { Win } from '../types';
 import { clampWin, type KindBehaviour } from '../world';
 
@@ -20,7 +22,7 @@ export const runner: KindBehaviour = {
       ctx.patch(w.id, { stage: 1, tellUntilTick: s.tick + TELL_TICKS });
       return;
     }
-    if (s.tick < w.tellUntilTick) return;
+    if (w.stage === 2 || s.tick < w.tellUntilTick) return; // tired, or still telling
     // Flee along the line from the cursor to the window centre (Chebyshev-normalised, integers only).
     let dx = w.x + (w.w >> 1) - s.pointerX;
     let dy = w.y + (w.h >> 1) - s.pointerY;
@@ -29,6 +31,8 @@ export const runner: KindBehaviour = {
     const mx = Math.trunc((dx * RUNNER_SPEED) / m);
     const my = Math.trunc((dy * RUNNER_SPEED) / m);
     const c = clampWin(s, w, w.x + mx, w.y + my);
-    if (c.x !== w.x || c.y !== w.y) ctx.patch(w.id, c);
+    if (c.x === w.x && c.y === w.y) return; // cornered: no stamina spent
+    const used = w.stageCount + 1;
+    ctx.patch(w.id, { ...c, stageCount: used, stage: used >= RUNNER_STAMINA_TICKS ? 2 : 1 });
   },
 };
