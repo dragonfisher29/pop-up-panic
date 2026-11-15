@@ -11,7 +11,6 @@ import { InputCapture } from './input';
 import { Fx } from './fx';
 import { countUp, fitDesktop, formatClock, tapPx, toVirtual } from './layout';
 import { Renderer } from './render';
-import { dailySeed, dayKey, formatCountdown, msUntilNextDay, puzzleNumber } from './daily';
 import { ramStrip, shareText } from './share';
 import {
   encodeInput,
@@ -28,20 +27,16 @@ import {
 import {
   clearPending,
   loadBest,
-  loadDaily,
   loadInitials,
   loadPending,
   loadSettings,
   saveBest,
-  saveDailyIfFirst,
   saveInitials,
   savePending,
   saveSettings,
-  type DailyResult,
   type RunResult,
 } from './storage';
 
-type Mode = 'daily' | 'endless';
 const TOAST_MS = 1600;
 
 const MAX_STEPS_PER_FRAME = 5;
@@ -88,18 +83,14 @@ app.innerHTML = `
     </div>
     <div class="screen title-screen">
       <p class="title-logo">PanicOS <b>97</b></p>
-      <div class="modes" role="group" aria-label="Mode">
-        <button class="mode mode-daily" type="button" data-mode="daily"><b class="mode-name"></b><span class="mode-sub"></span></button>
-        <button class="mode mode-endless" type="button" data-mode="endless"><b class="mode-name">${SYSTEM.modeEndless}</b><span class="mode-sub"></span></button>
+      <div class="modes">
+        <button class="mode mode-play" type="button"><b class="mode-name">${SYSTEM.modePlay}</b><span class="mode-sub"></span></button>
       </div>
       <p class="blink">${P.titlePrompt}</p>
       <p class="hint"${P.titleKeys ? "" : " hidden"}>${P.titleKeys}</p>
       <div class="board-slot">
         <section class="board" aria-label="${SYSTEM.boardTitle}">
-          <div class="board-tabs" role="tablist">
-            <button class="board-tab" type="button" role="tab" data-board="today">${SYSTEM.boardToday}</button>
-            <button class="board-tab" type="button" role="tab" data-board="yesterday">${SYSTEM.boardYesterday}</button>
-          </div>
+          <p class="board-heading">${SYSTEM.boardAllTime}</p>
           <ol class="board-list"></ol>
           <p class="board-note" role="status"></p>
         </section>
@@ -118,12 +109,11 @@ app.innerHTML = `
       <div class="dialog results" role="dialog" aria-labelledby="results-title">
         <div class="titlebar"><span class="title" id="results-title">${SYSTEM.resultsTitle}</span></div>
         <div class="body">
-          <p class="results-mode"></p>
+          <p class="results-mode" hidden></p>
           <p class="results-time"></p>
           <p class="results-best" hidden>${SYSTEM.newBest}</p>
           <ul class="results-stats"><li class="results-closes"></li><li class="results-points"></li><li class="results-combo"></li></ul>
           <p class="results-strip" aria-label="RAM over the run"></p>
-          <p class="results-next" hidden></p>
           <div class="picker" tabindex="0" hidden aria-label="${SYSTEM.pickerPrompt}">
             <p class="picker-prompt">${SYSTEM.pickerPrompt}</p>
             <div class="wheels">
@@ -197,40 +187,25 @@ for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev
 let crashAt = 0;
 let bootTimers: number[] = [];
 
-// ---------- mode and run record ----------
-let mode: Mode = 'daily';
-/** UTC day the current daily run was started on (a run that crosses midnight stays on its day). */
-let runDay = dayKey(new Date());
+// ---------- run record ----------
 /** RAM (milli-percent) after every tick of the current run, for the share strip. */
 let ramSamples: number[] = [];
 /** Every input of the current run as `[tick, type, ...fields]`, ending with `[crashTick, 'end']`. */
 let inputLog: LogEntry[] = [];
-let boardTab: 'today' | 'yesterday' = 'today';
 let boardReq = 0;
 let picker: Picker = newPicker(null);
 let sending = false;
 let lastRun: RunResult | null = null;
-/** The day's ranked result when the last run was practice; null when the last run was ranked or Endless. */
-let rankedRun: DailyResult | null = null;
 let isNewBest = false;
 
+/** One mode: a fresh random seed every run (app layer only; the sim stays seeded and deterministic). */
 function newSeed(): number {
   return (Math.random() * 2 ** 32) >>> 0;
 }
 
-function seedFor(m: Mode): number {
-  return m === 'daily' ? dailySeed(runDay) : newSeed();
-}
-
 function paintTitle(): void {
-  const day = dayKey(new Date());
-  const ranked = loadDaily(day);
-  $('.mode-daily .mode-name').textContent = SYSTEM.modeDaily(puzzleNumber(day));
-  $('.mode-daily .mode-sub').textContent = ranked
-    ? SYSTEM.modeDailyPractice(formatClock(ranked.timeMs))
-    : SYSTEM.modeDailyRanked;
-  const best = loadBest('endless');
-  $('.mode-endless .mode-sub').textContent = best ? SYSTEM.modeEndlessBest(formatClock(best.timeMs)) : SYSTEM.modeEndlessNew;
+  const best = loadBest();
+  $('.mode-play .mode-sub').textContent = best ? SYSTEM.modePlayBest(formatClock(best.timeMs)) : SYSTEM.modePlayNew;
 }
 
 function showTitle(): void {
@@ -239,16 +214,11 @@ function showTitle(): void {
   show(crashScreen, false);
   paintTitle();
   show(titleScreen, true);
-  $<HTMLButtonElement>(`.mode-${mode}`).focus();
-  enterBoard(titleScreen, 'today');
+  $<HTMLButtonElement>('.mode-play').focus();
+  enterBoard(titleScreen);
 }
 
-function pickMode(m: Mode): void {
-  mode = m;
-  boot();
-}
-
-/** Saves the finished run: the day's ranked result (first daily run only) and the per-mode best. */
+/** Saves the finished run as the pending submission (every run is ranked) and updates the local best. */
 function recordRun(): void {
   const run: RunResult = {
     timeMs: survivalMs(state),
@@ -258,15 +228,9 @@ function recordRun(): void {
     strip: ramStrip(ramSamples, state.status === 'crashed'),
   };
   lastRun = run;
-  rankedRun = null;
-  if (mode === 'daily') {
-    const daily: DailyResult = { ...run, day: runDay };
-    if (saveDailyIfFirst(daily)) {
-      inputLog.push([state.tick, 'end']);
-      savePending({ day: runDay, timeMs: run.timeMs, points: run.points, closes: run.closes, inputLog });
-    } else rankedRun = loadDaily(runDay);
-  }
-  isNewBest = saveBest(mode, run);
+  inputLog.push([state.tick, 'end']);
+  savePending({ timeMs: run.timeMs, points: run.points, closes: run.closes, inputLog });
+  isNewBest = saveBest(run);
 }
 
 // ---------- layout ----------
@@ -307,8 +271,7 @@ function startRun(): void {
   closeMenu();
   renderer.clear();
   fx.clear();
-  if (mode === 'daily') runDay = dayKey(new Date());
-  state = createGame(seedFor(mode));
+  state = createGame(newSeed());
   prevState = state;
   ramSamples = [];
   inputLog = [];
@@ -337,14 +300,12 @@ function showResults(): void {
   paintResults(countStart);
   show(results, true);
   $<HTMLButtonElement>('.retry').focus();
-  const daily = mode === 'daily';
-  show($('.board-dialog'), daily);
-  if (daily) enterBoard(results, runDay === dayKey(new Date()) ? 'today' : 'yesterday');
+  enterBoard(results);
   openPicker();
 }
 
 function onAnyKey(): void {
-  if (phase === 'title') pickMode(mode);
+  if (phase === 'title') boot();
   else if (phase === 'boot') startRun();
   else if (phase === 'crash') showResults();
 }
@@ -359,17 +320,7 @@ window.addEventListener('keydown', (e) => {
     else if (document.activeElement === pickerEl && onPickerKey(e.key)) e.preventDefault();
     return;
   }
-  if (phase === 'title') {
-    const k = e.key.toLowerCase();
-    if (k === 'd' || k === 'e') return pickMode(k === 'd' ? 'daily' : 'endless');
-    if (k === 'arrowleft' || k === 'arrowright' || k === 'arrowup' || k === 'arrowdown' || k === 'tab') {
-      e.preventDefault();
-      mode = mode === 'daily' ? 'endless' : 'daily';
-      $<HTMLButtonElement>(`.mode-${mode}`).focus();
-      return;
-    }
-    if (['shift', 'control', 'alt', 'meta'].includes(k)) return;
-  }
+  if (phase === 'title' && ['shift', 'control', 'alt', 'meta', 'tab'].includes(e.key.toLowerCase())) return;
   // Enter/Space would also "click" whatever gets focus next (Retry on the results panel).
   if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
   if (phase === 'run') {
@@ -382,15 +333,14 @@ window.addEventListener('keyup', (e) => {
   if (phase === 'run' && e.key === ' ') e.preventDefault(); // no button activation on Space release
 });
 for (const el of [bootScreen, crashScreen]) el.addEventListener('pointerdown', onAnyKey);
-for (const btn of titleScreen.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
-  btn.addEventListener('click', () => pickMode(btn.dataset.mode as Mode));
-  btn.addEventListener('focus', () => (mode = btn.dataset.mode as Mode));
-}
+$('.mode-play').addEventListener('click', () => {
+  if (phase === 'title') boot();
+});
 $('.retry').addEventListener('click', startRun);
 $('.to-menu').addEventListener('click', showTitle);
 $('.share').addEventListener('click', () => void share());
 paintTitle();
-$<HTMLButtonElement>('.mode-daily').focus();
+$<HTMLButtonElement>('.mode-play').focus();
 
 // ---------- Begin menu ----------
 function closeMenu(): void {
@@ -475,24 +425,10 @@ function paintResults(now: number): void {
 
 /** The parts of the results panel that don't count up. */
 function paintResultsOnce(): void {
-  const n = puzzleNumber(runDay);
-  $('.results-mode').textContent =
-    mode === 'endless'
-      ? SYSTEM.runEndless
-      : rankedRun
-        ? SYSTEM.runPractice(n, formatClock(rankedRun.timeMs))
-        : SYSTEM.runRanked(n);
+  $('.results-mode').textContent = '';
+  show($('.results-mode'), false);
   show($('.results-best'), isNewBest);
   $('.results-strip').textContent = lastRun?.strip ?? '';
-  show($('.results-next'), mode === 'daily');
-  paintCountdown();
-}
-
-let countdownText = '';
-function paintCountdown(): void {
-  if (mode !== 'daily') return;
-  const t = SYSTEM.nextDaily(formatCountdown(msUntilNextDay(new Date())));
-  if (t !== countdownText) $('.results-next').textContent = countdownText = t;
 }
 
 // ---------- share ----------
@@ -506,7 +442,6 @@ function hideShareUi(): void {
 function currentShareText(): string {
   const r = lastRun!;
   return shareText({
-    puzzle: mode === 'daily' ? puzzleNumber(runDay) : null,
     timeMs: r.timeMs,
     closes: r.closes,
     bestCombo: r.bestCombo,
@@ -541,34 +476,27 @@ async function share(): Promise<void> {
 }
 
 // ---------- leaderboard ----------
-const yesterdayKey = (): string => dayKey(new Date(Date.now() - 86_400_000));
-
 /** Moves the one board element into the title screen or the results window, then loads it. */
-function enterBoard(host: HTMLElement, tab: 'today' | 'yesterday'): void {
+function enterBoard(host: HTMLElement): void {
   host.querySelector('.board-slot')!.append(board);
-  boardTab = tab;
   void retryPending().then(refreshBoard);
 }
 
 async function refreshBoard(): Promise<void> {
   const req = ++boardReq;
-  for (const t of board.querySelectorAll<HTMLButtonElement>('.board-tab')) {
-    t.setAttribute('aria-selected', String(t.dataset.board === boardTab));
-  }
-  const day = boardTab === 'today' ? dayKey(new Date()) : yesterdayKey();
   const list = $('.board-list');
   const note = $('.board-note');
   list.replaceChildren();
   note.textContent = SYSTEM.boardLoading;
   const me = loadInitials();
-  const b = await fetchBoard(day, me);
+  const b = await fetchBoard(me);
   if (req !== boardReq) return; // a newer refresh started
   if (!b) {
     note.textContent = SYSTEM.boardOffline;
     return;
   }
   paintBoard(b);
-  note.textContent = b.top.length === 0 ? SYSTEM.boardEmpty : loadPending(day) ? SYSTEM.boardUnsent : '';
+  note.textContent = b.top.length === 0 ? SYSTEM.boardEmpty : phase !== 'results' && loadPending() ? SYSTEM.boardUnsent : '';
 }
 
 function paintBoard(b: Board): void {
@@ -592,29 +520,19 @@ function paintBoard(b: Board): void {
   $('.board-row.mine')?.scrollIntoView({ block: 'nearest' });
 }
 
-for (const t of board.querySelectorAll<HTMLButtonElement>('.board-tab')) {
-  t.addEventListener('click', () => {
-    boardTab = t.dataset.board as 'today' | 'yesterday';
-    void refreshBoard();
-  });
-}
-
-/** Silently sends any unsent ranked run (today's or yesterday's) when the initials are already known. */
+/** Silently sends an unsent run left over from an offline results screen, when the initials are known. */
 async function retryPending(): Promise<void> {
   const initials = loadInitials();
-  if (!initials || sending) return;
-  for (const day of [dayKey(new Date()), yesterdayKey()]) {
-    if (phase === 'results' && day === runDay) continue; // the picker on screen handles this one
-    const p = loadPending(day);
-    if (!p) continue;
-    const r = await submitScore({ ...p, initials });
-    if (r.ok || r.reason !== 'offline') clearPending(day);
-  }
+  if (!initials || sending || phase === 'results') return; // on results, the picker handles this run
+  const p = loadPending();
+  if (!p) return;
+  const r = await submitScore({ ...p, initials });
+  if (r.ok || r.reason !== 'offline') clearPending();
 }
 
-/** Shows the initials picker when this run's day still has an unsent ranked run. */
+/** Shows the initials picker while this run is still unsent. */
 function openPicker(): void {
-  const pending = mode === 'daily' ? loadPending(runDay) : null;
+  const pending = loadPending();
   show(pickerEl, pending !== null);
   if (!pending) return;
   picker = newPicker(loadInitials());
@@ -642,7 +560,7 @@ function onPickerKey(key: string): boolean {
 }
 
 async function sendRun(initials: string): Promise<void> {
-  const p = loadPending(runDay);
+  const p = loadPending();
   if (!p || sending) return;
   sending = true;
   const status = $('.picker-status');
@@ -651,15 +569,16 @@ async function sendRun(initials: string): Promise<void> {
   const r = await submitScore({ ...p, initials });
   sending = false;
   if (r.ok) {
-    clearPending(runDay);
+    clearPending();
     show(pickerEl, false);
     $('.board-note').textContent = '';
-    $('.results-mode').textContent = `${$('.results-mode').textContent} · ${SYSTEM.pickerSent(r.rank)}`;
+    $('.results-mode').textContent = SYSTEM.pickerSent(r.rank);
+    show($('.results-mode'), true);
     $<HTMLButtonElement>('.retry').focus();
     void refreshBoard();
     return;
   }
-  if (r.reason !== 'offline') clearPending(runDay);
+  if (r.reason !== 'offline') clearPending();
   status.textContent = r.reason === 'rate' ? SYSTEM.pickerRate : r.reason === 'rejected' ? SYSTEM.pickerRejected : SYSTEM.pickerOffline;
 }
 
@@ -719,10 +638,9 @@ function tick(now: number): void {
   }
   if (phase === 'results') {
     if (now - countStart <= COUNT_MS + 50) paintResults(now);
-    paintCountdown();
   }
   last = now;
 }
 requestAnimationFrame(frame);
 
-enterBoard(titleScreen, 'today');
+enterBoard(titleScreen);

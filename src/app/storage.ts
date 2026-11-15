@@ -1,5 +1,6 @@
 // localStorage wrapper. Every access is in try/catch: private windows and blocked storage must not break the game.
-// Keys (ARCHITECTURE §7): upp:settings · upp:daily:<day> · upp:best:endless · upp:best:daily · upp:initials · upp:pending:<day>
+// Keys (ARCHITECTURE §7): upp:settings · upp:best · upp:initials · upp:pending
+// Legacy (read-only, from the old Daily/Endless modes): upp:best:endless · upp:best:daily
 
 export interface Settings {
   mute: boolean;
@@ -14,12 +15,6 @@ export interface RunResult {
   /** RAM strip emoji (share text) */
   strip: string;
 }
-
-export interface DailyResult extends RunResult {
-  day: string;
-}
-
-export type BestMode = 'endless' | 'daily';
 
 const SETTINGS_KEY = 'upp:settings';
 const DEFAULTS: Settings = { mute: false };
@@ -66,21 +61,14 @@ export function saveSettings(s: Settings): void {
   write(SETTINGS_KEY, { ...(typeof prev === 'object' && prev !== null ? prev : {}), ...s });
 }
 
-/** Today's ranked result, or null if the ranked run hasn't been played yet. */
-export function loadDaily(day: string): DailyResult | null {
-  const run = asRun(read(`upp:daily:${day}`));
-  return run ? { ...run, day } : null;
-}
+const better = (a: RunResult, b: RunResult): boolean => a.timeMs > b.timeMs || (a.timeMs === b.timeMs && a.points > b.points);
 
-/** Stores `r` as the day's ranked result if there isn't one yet. Returns true if `r` is the ranked run. */
-export function saveDailyIfFirst(r: DailyResult): boolean {
-  if (loadDaily(r.day)) return false;
-  write(`upp:daily:${r.day}`, r);
-  return true;
-}
-
-export function loadBest(mode: BestMode): RunResult | null {
-  return asRun(read(`upp:best:${mode}`));
+/** The local best run. Falls back to the better of the old Daily / Endless bests. */
+export function loadBest(): RunResult | null {
+  const cur = asRun(read('upp:best'));
+  if (cur) return cur;
+  const legacy = [asRun(read('upp:best:endless')), asRun(read('upp:best:daily'))].filter((r): r is RunResult => r !== null);
+  return legacy.reduce<RunResult | null>((a, r) => (a && !better(r, a) ? a : r), null);
 }
 
 export function loadInitials(): string | null {
@@ -92,36 +80,37 @@ export function saveInitials(s: string): void {
   write('upp:initials', s);
 }
 
-/** The day's ranked run waiting to be sent (set at crash, cleared once the server accepts it). */
+/** The last run waiting to be sent (set at crash, cleared once sent). A newer run replaces it. */
 export interface PendingRun {
-  day: string;
   timeMs: number;
   points: number;
   closes: number;
   inputLog: (number | string)[][];
 }
 
-export function loadPending(day: string): PendingRun | null {
-  const v = read(`upp:pending:${day}`) as PendingRun | null;
-  return v && typeof v === 'object' && Array.isArray(v.inputLog) && isCount(v.timeMs) ? { ...v, day } : null;
+const PENDING_KEY = 'upp:pending';
+
+export function loadPending(): PendingRun | null {
+  const v = read(PENDING_KEY) as PendingRun | null;
+  return v && typeof v === 'object' && Array.isArray(v.inputLog) && v.inputLog.length > 0 && isCount(v.timeMs) ? v : null;
 }
 
 export function savePending(r: PendingRun): void {
-  write(`upp:pending:${r.day}`, r);
+  write(PENDING_KEY, r);
 }
 
-export function clearPending(day: string): void {
+export function clearPending(): void {
   try {
-    localStorage.removeItem(`upp:pending:${day}`);
+    localStorage.removeItem(PENDING_KEY);
   } catch {
     // storage unavailable
   }
 }
 
 /** Keeps the longer run (points break ties). Returns true if `r` is a new best. */
-export function saveBest(mode: BestMode, r: RunResult): boolean {
-  const prev = loadBest(mode);
-  if (prev && (prev.timeMs > r.timeMs || (prev.timeMs === r.timeMs && prev.points >= r.points))) return false;
-  write(`upp:best:${mode}`, r);
+export function saveBest(r: RunResult): boolean {
+  const prev = loadBest();
+  if (prev && !better(r, prev)) return false;
+  write('upp:best', r);
   return true;
 }

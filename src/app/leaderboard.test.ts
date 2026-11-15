@@ -67,7 +67,7 @@ describe('encodeInput', () => {
   });
 });
 
-const sub: Submission = { day: '2026-11-15', initials: 'NAD', timeMs: 1000, points: 3, closes: 1, inputLog: [[60, 'end']] };
+const sub: Submission = { initials: 'NAD', timeMs: 1000, points: 3, closes: 1, inputLog: [[60, 'end']] };
 
 describe('api client', () => {
   it('submitScore returns the rank on 201', async () => {
@@ -85,8 +85,10 @@ describe('api client', () => {
   it('fetchBoard parses top and me, and returns null on failure', async () => {
     const body = { top: [{ rank: 1, initials: 'AAA', timeMs: 5000, points: 9 }], me: null };
     const f = vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }));
-    expect(await fetchBoard('2026-11-15', 'NAD', f)).toEqual(body);
-    expect(f).toHaveBeenCalledWith('/api/scores?day=2026-11-15&me=NAD');
-    expect(await fetchBoard('2026-11-15', null, async () => new Response('nope', { status: 500 }))).toBeNull();
+    expect(await fetchBoard('NAD', f)).toEqual(body);
+    expect(f).toHaveBeenCalledWith('/api/scores?me=NAD');
+    await fetchBoard(null, f);
+    expect(f).toHaveBeenLastCalledWith('/api/scores');
+    expect(await fetchBoard(null, async () => new Response('nope', { status: 500 }))).toBeNull();
   });
 });

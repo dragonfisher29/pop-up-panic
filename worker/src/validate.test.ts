@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_LOG_BYTES, previousDay, validateSubmission } from './validate';
+import { MAX_LOG_BYTES, validateSubmission } from './validate';
 
 const TODAY = '2026-11-15';
 
@@ -18,15 +18,6 @@ function check(patch: Record<string, unknown>) {
   return validateSubmission({ ...good(), ...patch }, TODAY);
 }
 
-describe('previousDay', () => {
-  it('handles month and year boundaries', () => {
-    expect(previousDay('2026-11-15')).toBe('2026-11-14');
-    expect(previousDay('2026-03-01')).toBe('2026-02-28');
-    expect(previousDay('2024-03-01')).toBe('2024-02-29');
-    expect(previousDay('2026-01-01')).toBe('2025-12-31');
-  });
-});
-
 describe('validateSubmission', () => {
   it('accepts a good submission', () => {
     const r = validateSubmission(good(), TODAY);
@@ -38,13 +29,16 @@ describe('validateSubmission', () => {
     expect(validateSubmission('x', TODAY).ok).toBe(false);
   });
 
-  it('day: accepts yesterday', () => {
-    expect(check({ day: '2026-11-14' }).ok).toBe(true);
-  });
-  it('day: rejects other days and bad formats', () => {
-    expect(check({ day: '2026-11-13' })).toEqual({ ok: false, error: 'bad day' });
-    expect(check({ day: '2026-11-16' }).ok).toBe(false);
-    expect(check({ day: 5 }).ok).toBe(false);
+  it('day: not required, and a client-sent day is ignored', () => {
+    const { day: _d, ...noDay } = good();
+    const r = validateSubmission(noDay, TODAY);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.day).toBe(TODAY);
+    for (const day of ['2020-01-01', '2026-11-16', 5, 'junk']) {
+      const s = check({ day });
+      expect(s.ok).toBe(true);
+      if (s.ok) expect(s.value.day).toBe(TODAY);
+    }
   });
 
   it('initials: rejects blocked, lowercase, non-string', () => {

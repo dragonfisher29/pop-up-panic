@@ -7,7 +7,7 @@
 ![Pop-Up Panic gameplay](docs/demo.gif)
 <!-- Record with ScreenToGif: ~10 s, 800 px wide, one run from calm desktop to crash screen. Save as docs/demo.gif. -->
 
-A single-player arcade game in the browser about a cursed 90s desktop. Every pop-up eats RAM; hit 100% and PanicOS 97 crashes. There's a new daily seed every day, a global leaderboard, and an Endless mode for practice. Built in one weekend with Claude Code.
+A single-player arcade game in the browser about a cursed 90s desktop. Every pop-up eats RAM; hit 100% and PanicOS 97 crashes. Every run gets a fresh seed and a shot at the all-time top 10. Built in one weekend with Claude Code.
 
 ## How to play
 - **Close pop-ups** by clicking (or tapping) their X. Some of them fight back:
@@ -22,9 +22,9 @@ A single-player arcade game in the browser about a cursed 90s desktop. Every pop
 - **Panic tools:**
   - `ALT+F4` (Force Quit): **Space** or **right-click**, or tap the button. Closes the window under the cursor. 3 charges, +1 every 45 s.
   - `CTRL+ALT+DEL` (Task Manager): **Shift**, or tap the button. Closes every hostile window. Once per run.
-- **Daily:** everyone gets the same seed. Your first run of the day is ranked and goes on the wall; later runs are practice.
+- **One mode:** a fresh random seed every run. Every run can go on the all-time top 10.
 - **Share:** your run as an emoji RAM strip, ready for WhatsApp or Discord.
-- Phones work in landscape. Taps work like clicks, and the runner dodges a 90 px circle around your touch.
+- Phones work in landscape. Taps work like clicks, and the runner dodges a 60 px circle (until it tires out) around your touch.
 
 ## Tech notes
 - **Vite + TypeScript, no framework.** The desktop is one 1280×720 `div` scaled to fit the screen; windows are plain DOM nodes keyed by id.
@@ -48,7 +48,7 @@ npm run dev
 | Path | What |
 |---|---|
 | `src/sim/` | Pure, deterministic game simulation and its tests |
-| `src/app/` | Browser renderer, input, effects, sound, daily seed, share text, leaderboard client |
+| `src/app/` | Browser renderer, input, effects, sound, share text, leaderboard client |
 | `worker/`, `functions/` | Leaderboard API (Pages Functions) and the D1 schema |
 | `docs/SPEC.md` | Game rules and numbers |
 | `docs/ARCHITECTURE.md` | Code layout, determinism rules, leaderboard API |

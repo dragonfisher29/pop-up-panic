@@ -33,15 +33,15 @@ describe('ramStrip', () => {
 });
 
 describe('shareText', () => {
-  it('matches the SPEC §7 format for a daily', () => {
-    expect(shareText({ puzzle: 12, timeMs: 94_400, closes: 87, bestCombo: 6, strip: '🟩🟩🟨🟨🟧🟥🟥💥' })).toBe(
-      'Pop-Up Panic #12 — 1:34 💾 87 closes 🔥x6\n🟩🟩🟨🟨🟧🟥🟥💥',
+  it('formats time, closes, combo and the RAM strip', () => {
+    expect(shareText({ timeMs: 94_400, closes: 87, bestCombo: 6, strip: '🟩🟩🟨🟨🟧🟥🟥💥' })).toBe(
+      'Pop-Up Panic — 1:34 💾 87 closes 🔥x6\n🟩🟩🟨🟨🟧🟥🟥💥',
     );
   });
 
-  it('labels Endless runs and never shows x0', () => {
-    expect(shareText({ puzzle: null, timeMs: 5_000, closes: 0, bestCombo: 0, strip: '' })).toBe(
-      'Pop-Up Panic Endless — 0:05 💾 0 closes 🔥x1\n',
+  it('never shows x0', () => {
+    expect(shareText({ timeMs: 5_000, closes: 0, bestCombo: 0, strip: '' })).toBe(
+      'Pop-Up Panic — 0:05 💾 0 closes 🔥x1\n',
     );
   });
 });

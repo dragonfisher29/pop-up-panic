@@ -30,32 +30,21 @@ function fakeDb() {
       const [day, initials, time_ms, points, closes, input_log, ip_hash, created_at] = v as [
         string, string, number, number, number, string, string, number,
       ];
-      const row: Row = { day, initials, time_ms, points, closes, input_log, ip_hash, created_at };
-      const i = scores.findIndex((r) => r.day === day && r.initials === initials && r.ip_hash === ip_hash);
-      if (i < 0) scores.push(row);
-      else {
-        const o = scores[i]!;
-        if (time_ms > o.time_ms || (time_ms === o.time_ms && points > o.points)) scores[i] = row;
-      }
+      scores.push({ day, initials, time_ms, points, closes, input_log, ip_hash, created_at });
       return null;
     }
     if (sql.includes('COUNT(*)')) {
-      const [day, t1, t2, p2, t3, p3, c3] = v as [string, number, number, number, number, number, number];
+      const [t1, t2, p2, t3, p3, c3] = v as [number, number, number, number, number, number];
       const n = scores.filter(
-        (r) =>
-          r.day === day &&
-          (r.time_ms > t1 || (r.time_ms === t2 && r.points > p2) || (r.time_ms === t3 && r.points === p3 && r.created_at < c3)),
+        (r) => r.time_ms > t1 || (r.time_ms === t2 && r.points > p2) || (r.time_ms === t3 && r.points === p3 && r.created_at < c3),
       ).length;
       return { n };
     }
-    if (sql.includes('LIMIT 100')) {
-      return [...scores].filter((r) => r.day === v[0]).sort(better).slice(0, 100);
+    if (sql.includes('LIMIT 10') && !sql.includes('WHERE')) {
+      return [...scores].sort(better).slice(0, 10);
     }
-    if (sql.includes('AND initials = ? ORDER BY')) {
-      return [...scores].filter((r) => r.day === v[0] && r.initials === v[1]).sort(better)[0] ?? null;
-    }
-    if (sql.includes('AND ip_hash = ?')) {
-      return scores.find((r) => r.day === v[0] && r.initials === v[1] && r.ip_hash === v[2]) ?? null;
+    if (sql.includes('WHERE initials = ?')) {
+      return [...scores].filter((r) => r.initials === v[0]).sort(better)[0] ?? null;
     }
     throw new Error('unexpected sql: ' + sql);
   };
@@ -80,7 +69,7 @@ const DAY = '2026-11-15';
 
 function body(over: Record<string, unknown> = {}) {
   return {
-    day: DAY, initials: 'NAD', timeMs: 10000, points: 16, closes: 3,
+    initials: 'NAD', timeMs: 10000, points: 16, closes: 3,
     inputLog: [[0, 'pointer', 1, 2], [300], [600]],
     ...over,
   };
@@ -100,6 +89,8 @@ function post(env: Env, b: unknown, ip: string, now = NOW) {
 
 const get = (env: Env, qs: string) => handle(new Request('http://x/api/scores' + qs), env, NOW);
 
+type Top = { top: { initials: string; rank: number; timeMs: number }[]; me: { rank: number; initials: string } | null };
+
 describe('POST /api/score', () => {
   it('ranks three players by time then points', async () => {
     const { db } = fakeDb();
@@ -112,39 +103,52 @@ describe('POST /api/score', () => {
     expect(await b.json()).toEqual({ rank: 1 });
     const c = await post(env, body({ initials: 'CCC', timeMs: 10000, points: 24 }), '3.3.3.3', NOW + 2);
     expect(await c.json()).toEqual({ rank: 2 });
-    const top = (await (await get(env, `?day=${DAY}`)).json()) as { top: { initials: string; rank: number }[] };
+    const top = (await (await get(env, '')).json()) as Top;
     expect(top.top.map((t) => t.initials)).toEqual(['BBB', 'CCC', 'AAA']);
   });
 
-  it('keeps a better resubmit and ignores a worse one', async () => {
+  it('accepts a submission without day, stamping the server UTC day', async () => {
     const { db, scores } = fakeDb();
-    const env: Env = { DB: db };
-    await post(env, body({ timeMs: 10000 }), '1.1.1.1');
-    const worse = await post(env, body({ timeMs: 5000 }), '1.1.1.1');
-    expect(worse.status).toBe(201);
-    expect(scores).toHaveLength(1);
-    expect(scores[0]!.time_ms).toBe(10000);
-    await post(env, body({ timeMs: 12000, inputLog: [[0], [1], [800]] }), '1.1.1.1');
-    expect(scores).toHaveLength(1);
-    expect(scores[0]!.time_ms).toBe(12000);
+    const r = await post({ DB: db }, body(), '1.1.1.1');
+    expect(r.status).toBe(201);
+    expect(scores[0]!.day).toBe(DAY);
   });
 
-  it('rate limits the 6th submission per ip and day', async () => {
+  it('accepts and ignores a stale client day', async () => {
+    const { db, scores } = fakeDb();
+    const r = await post({ DB: db }, body({ day: '2026-01-01' }), '1.1.1.1');
+    expect(r.status).toBe(201);
+    expect(scores).toHaveLength(1);
+    expect(scores[0]!.day).toBe(DAY);
+  });
+
+  it('stores every run: same initials and ip twice, both can be in the top', async () => {
+    const { db, scores } = fakeDb();
+    const env: Env = { DB: db };
+    await post(env, body({ timeMs: 10000 }), '1.1.1.1', NOW);
+    const worse = await post(env, body({ timeMs: 5000 }), '1.1.1.1', NOW + 1);
+    expect(worse.status).toBe(201);
+    expect(await worse.json()).toEqual({ rank: 2 });
+    expect(scores).toHaveLength(2);
+    const top = (await (await get(env, '')).json()) as Top;
+    expect(top.top.map((t) => [t.initials, t.timeMs])).toEqual([['NAD', 10000], ['NAD', 5000]]);
+  });
+
+  it('rate limits the 51st submission per ip and day', async () => {
     const { db } = fakeDb();
     const env: Env = { DB: db };
-    for (let i = 0; i < 5; i++) expect((await post(env, body(), '9.9.9.9')).status).toBe(201);
-    const r = await post(env, body(), '9.9.9.9');
+    for (let i = 0; i < 50; i++) expect((await post(env, body(), '9.9.9.9', NOW + i)).status).toBe(201);
+    const r = await post(env, body(), '9.9.9.9', NOW + 50);
     expect(r.status).toBe(429);
     expect(await r.json()).toEqual({ error: 'rate limited' });
     expect((await post(env, body(), '8.8.8.8')).status).toBe(201);
   });
 
-  it('rejects blocked initials, bad json and invalid bodies', async () => {
+  it('rejects blocked initials and bad json', async () => {
     const { db, scores } = fakeDb();
     const env: Env = { DB: db };
     expect((await post(env, body({ initials: 'ASS' }), '1.1.1.1')).status).toBe(400);
     expect((await post(env, '{nope', '1.1.1.1')).status).toBe(400);
-    expect((await post(env, body({ day: '2026-01-01' }), '1.1.1.1')).status).toBe(400);
     expect(scores).toHaveLength(0);
   });
 
@@ -158,31 +162,36 @@ describe('POST /api/score', () => {
 });
 
 describe('GET /api/scores', () => {
-  it('rejects a bad day', async () => {
+  it('works without a day param and ignores one if present', async () => {
     const { db } = fakeDb();
-    expect((await get({ DB: db }, '?day=2020-01-01')).status).toBe(400);
-    expect((await get({ DB: db }, '')).status).toBe(400);
+    const env: Env = { DB: db };
+    await post(env, body(), '1.1.1.1');
+    const a = await get(env, '');
+    expect(a.status).toBe(200);
+    expect(((await a.json()) as Top).top).toHaveLength(1);
+    expect((await get(env, '?day=2020-01-01')).status).toBe(200);
   });
 
-  it('returns me outside the top 100, and null when absent', async () => {
+  it('caps the top at 10 across different days and ranks all-time', async () => {
     const { db, scores } = fakeDb();
     const env: Env = { DB: db };
-    for (let i = 0; i < 105; i++) {
+    for (let i = 0; i < 12; i++) {
       scores.push({
-        day: DAY, initials: 'ZZA', time_ms: 100000 - i, points: 1, closes: 1,
+        day: `2026-11-${String(1 + i).padStart(2, '0')}`, initials: 'ZZA', time_ms: 100000 - i, points: 1, closes: 1,
         input_log: '[]', ip_hash: 'h' + i, created_at: i,
       });
     }
     await post(env, body({ initials: 'LOW', timeMs: 1000, points: 0, closes: 0 }), '5.5.5.5');
-    const res = await get(env, `?day=${DAY}&me=LOW`);
+    const res = await get(env, '?me=LOW');
     expect(res.headers.get('cache-control')).toBe('no-store');
-    const j = (await res.json()) as { top: { rank: number }[]; me: { rank: number; initials: string } | null };
-    expect(j.top).toHaveLength(100);
+    const j = (await res.json()) as Top;
+    expect(j.top).toHaveLength(10);
     expect(j.top[0]!.rank).toBe(1);
-    expect(j.me).toMatchObject({ rank: 106, initials: 'LOW' });
-    const none = (await (await get(env, `?day=${DAY}&me=QQQ`)).json()) as { me: unknown };
+    expect(j.top[9]!.rank).toBe(10);
+    expect(j.me).toMatchObject({ rank: 13, initials: 'LOW' });
+    const none = (await (await get(env, '?me=QQQ')).json()) as Top;
     expect(none.me).toBeNull();
-    const bad = (await (await get(env, `?day=${DAY}&me=ass`)).json()) as { me: unknown };
+    const bad = (await (await get(env, '?me=ass')).json()) as Top;
     expect(bad.me).toBeNull();
   });
 });

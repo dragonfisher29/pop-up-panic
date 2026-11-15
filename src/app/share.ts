@@ -32,16 +32,13 @@ export function ramStrip(samples: readonly number[], crashed: boolean): string {
 }
 
 export interface ShareRun {
-  /** daily number, or null for Endless */
-  puzzle: number | null;
   timeMs: number;
   closes: number;
   bestCombo: number;
   strip: string;
 }
 
-/** "Pop-Up Panic #12 — 1:34 💾 87 closes 🔥x6" + newline + the RAM strip. */
+/** "Pop-Up Panic — 1:34 💾 87 closes 🔥x6" + newline + the RAM strip. */
 export function shareText(r: ShareRun): string {
-  const tag = r.puzzle === null ? 'Endless' : `#${r.puzzle}`;
-  return `Pop-Up Panic ${tag} — ${formatClock(r.timeMs)} 💾 ${r.closes} closes 🔥x${Math.max(1, r.bestCombo)}\n${r.strip}`;
+  return `Pop-Up Panic — ${formatClock(r.timeMs)} 💾 ${r.closes} closes 🔥x${Math.max(1, r.bestCombo)}\n${r.strip}`;
 }

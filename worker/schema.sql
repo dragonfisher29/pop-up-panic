@@ -1,10 +1,11 @@
 -- Pop-Up Panic leaderboard (Cloudflare D1). Applied in M5:
 --   npx wrangler d1 execute popup-panic --local  --file worker/schema.sql
 --   npx wrangler d1 execute popup-panic --remote --file worker/schema.sql   (asks the owner first)
+-- Existing live DBs: apply worker/migrations/0002_alltime.sql instead.
 
 CREATE TABLE IF NOT EXISTS scores (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  day         TEXT    NOT NULL,            -- 'YYYY-MM-DD' (UTC)
+  day         TEXT    NOT NULL,            -- 'YYYY-MM-DD' (UTC), a record only
   initials    TEXT    NOT NULL CHECK (length(initials) = 3),
   time_ms     INTEGER NOT NULL,
   points      INTEGER NOT NULL,
@@ -14,8 +15,9 @@ CREATE TABLE IF NOT EXISTS scores (
   created_at  INTEGER NOT NULL             -- unix ms
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS scores_best_per_player ON scores (day, initials, ip_hash);
-CREATE INDEX IF NOT EXISTS scores_rank ON scores (day, time_ms DESC, points DESC, created_at ASC);
+-- All-time board: every run is a row; ranked by time, then points, then earliest.
+CREATE INDEX IF NOT EXISTS scores_alltime ON scores (time_ms DESC, points DESC, created_at ASC);
+CREATE INDEX IF NOT EXISTS scores_by_initials ON scores (initials, time_ms DESC, points DESC, created_at ASC);
 
 CREATE TABLE IF NOT EXISTS submissions (
   day      TEXT    NOT NULL,

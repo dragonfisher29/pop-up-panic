@@ -2,12 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearPending,
   loadBest,
-  loadDaily,
   loadInitials,
   loadPending,
   loadSettings,
   saveBest,
-  saveDailyIfFirst,
   saveInitials,
   savePending,
   saveSettings,
@@ -42,21 +40,20 @@ describe('storage', () => {
     expect(JSON.parse(localStorage.getItem('upp:settings')!)).toEqual({ volume: 0.5, mute: true });
   });
 
-  it('ranks only the first daily run of a day', () => {
-    expect(loadDaily('2026-11-15')).toBeNull();
-    expect(saveDailyIfFirst({ day: '2026-11-15', ...run(90_000) })).toBe(true);
-    expect(saveDailyIfFirst({ day: '2026-11-15', ...run(200_000) })).toBe(false);
-    expect(loadDaily('2026-11-15')?.timeMs).toBe(90_000);
-    expect(saveDailyIfFirst({ day: '2026-11-16', ...run(50_000) })).toBe(true);
+  it('keeps the best time, points break ties', () => {
+    expect(loadBest()).toBeNull();
+    expect(saveBest(run(60_000))).toBe(true);
+    expect(saveBest(run(50_000))).toBe(false);
+    expect(saveBest(run(60_000, 10))).toBe(false);
+    expect(saveBest(run(60_000, 11))).toBe(true);
+    expect(loadBest()?.points).toBe(11);
   });
 
-  it('keeps the best time per mode, points break ties', () => {
-    expect(saveBest('endless', run(60_000))).toBe(true);
-    expect(saveBest('endless', run(50_000))).toBe(false);
-    expect(saveBest('endless', run(60_000, 10))).toBe(false);
-    expect(saveBest('endless', run(60_000, 11))).toBe(true);
-    expect(loadBest('endless')?.points).toBe(11);
-    expect(loadBest('daily')).toBeNull();
+  it('carries over the better of the old Daily / Endless bests', () => {
+    localStorage.setItem('upp:best:endless', JSON.stringify(run(40_000)));
+    localStorage.setItem('upp:best:daily', JSON.stringify(run(70_000)));
+    expect(loadBest()?.timeMs).toBe(70_000);
+    expect(saveBest(run(60_000))).toBe(false);
   });
 
   it('keeps initials and a pending ranked run until cleared', () => {
@@ -65,18 +62,20 @@ describe('storage', () => {
     expect(loadInitials()).toBe('NAD');
     localStorage.setItem('upp:initials', '"nope"');
     expect(loadInitials()).toBeNull();
-    const p = { day: '2026-11-15', timeMs: 1000, points: 2, closes: 1, inputLog: [[60, 'end']] };
+    const p = { timeMs: 1000, points: 2, closes: 1, inputLog: [[60, 'end']] };
     savePending(p);
-    expect(loadPending('2026-11-15')).toEqual(p);
-    clearPending('2026-11-15');
-    expect(loadPending('2026-11-15')).toBeNull();
+    expect(loadPending()).toEqual(p);
+    savePending({ ...p, timeMs: 2000 }); // a newer run replaces the unsent one
+    expect(loadPending()?.timeMs).toBe(2000);
+    clearPending();
+    expect(loadPending()).toBeNull();
   });
 
   it('ignores corrupt values', () => {
-    localStorage.setItem('upp:best:endless', '{not json');
-    localStorage.setItem('upp:daily:2026-11-15', JSON.stringify({ timeMs: -1 }));
-    expect(loadBest('endless')).toBeNull();
-    expect(loadDaily('2026-11-15')).toBeNull();
+    localStorage.setItem('upp:best', '{not json');
+    localStorage.setItem('upp:pending', JSON.stringify({ timeMs: -1, inputLog: [] }));
+    expect(loadBest()).toBeNull();
+    expect(loadPending()).toBeNull();
   });
 });
 
@@ -91,10 +90,9 @@ describe('storage when localStorage throws', () => {
   it('never throws and falls back to defaults', () => {
     expect(loadSettings()).toEqual({ mute: false });
     expect(() => saveSettings({ mute: true })).not.toThrow();
-    expect(loadDaily('2026-11-15')).toBeNull();
-    expect(saveDailyIfFirst({ day: '2026-11-15', ...run(1) })).toBe(true);
-    expect(saveBest('endless', run(1))).toBe(true);
+    expect(saveBest(run(1))).toBe(true);
     expect(loadInitials()).toBeNull();
-    expect(() => clearPending('2026-11-15')).not.toThrow();
+    expect(loadPending()).toBeNull();
+    expect(() => clearPending()).not.toThrow();
   });
 });

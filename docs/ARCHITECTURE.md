@@ -35,7 +35,7 @@ scripts/
 
 ## 3. Simulation contract
 ```ts
-createGame(seed: number, opts?: { mode: 'daily' | 'endless' }): GameState
+createGame(seed: number): GameState
 step(state: GameState, inputs: readonly Input[]): GameState   // advances exactly 1 tick
 ```
 - Inputs for a tick are applied **before** spawning and leaking.
@@ -58,7 +58,7 @@ The M0 starter only has `{ t: 'close', id }`. In M1 this becomes `click` with `p
 - A fixed-timestep accumulator with `requestAnimationFrame`: `acc += dt; while (acc >= 1000/60) { state = step(state, drainInputs()); acc -= 1000/60 }`. At most 5 steps per frame, so a background tab doesn't spiral.
 - The renderer draws from `state` after the steps run. It never writes back into the sim.
 - Every tick's inputs are appended to `inputLog` as `[tick, ...input]` so the run can be replayed and submitted.
-- Pausing on tab blur is fine for Endless mode, but Daily mode keeps running so it can't be exploited.
+- Runs keep running on tab blur (every run is ranked, so pausing could be exploited).
 
 ## 5. Rendering
 - One `<div class="desktop">` sized 1280×720, scaled with `transform: scale(s)` and centred in the viewport.
@@ -69,24 +69,23 @@ The M0 starter only has `{ t: 'close', id }`. In M1 this becomes `click` with `p
 ### 6.1 Endpoints
 `POST /api/score`
 ```json
-{ "day": "2026-11-15", "initials": "NAD", "timeMs": 94133, "points": 412, "closes": 87, "inputLog": [[0,"pointer",640,360], ...] }
+{ "initials": "NAD", "timeMs": 94133, "points": 412, "closes": 87, "inputLog": [[0,"pointer",640,360], ...] }
 ```
-→ `201 { "rank": 17 }`, or `400 { "error": "..." }`, or `429` when rate limited.
+→ `201 { "rank": 17 }` (all-time rank of this run), or `400 { "error": "..." }`, or `429` when rate limited. A `day` field from old clients is ignored; the server stamps the UTC date.
 
-`GET /api/scores?day=2026-11-15&me=NAD` → `{ "top": [{ "rank":1, "initials":"AAA", "timeMs":201000, "points":900 }], "me": { "rank": 17, ... } | null }`
+`GET /api/scores?me=NAD` → `{ "top": [ up to 10 × { "rank":1, "initials":"AAA", "timeMs":201000, "points":900 } ], "me": { "rank": 17, ... } | null }`. `top` is the all-time top 10; `me` is that initials' best run.
 
 ### 6.2 Validation (weekend version)
-- `day` is today or yesterday (UTC).
+- One mode (playtest 2026-11-15): random seed per run, every run is inserted (no per-player dedup).
 - `initials` matches `^[A-Z]{3}$` and isn't on the blocklist.
 - `0 < timeMs <= 600000`. The last tick in `inputLog` must be at least `timeMs / (1000/60) - 2`.
 - `closes <= inputLog.length` and `points <= closes * 8`.
 - `inputLog` is at most 1 MB once encoded (M5: raised from 200 KB — a 200 s run with a pointer move every tick is ~250 KB). The client always ends the log with `[crashTick, "end"]`.
-- Rate limit: 5 submissions per `(day, ip_hash)`. `ip_hash = SHA-256(ip + daily salt)`; raw IPs are never stored.
-- Keep only the best row per `(day, initials, ip_hash)`.
-- **M5b:** replay `inputLog` with `src/sim` against `dailySeed(day)` and require the replayed `timeMs` and `points` to match exactly.
+- Rate limit: 50 submissions per `(day, ip_hash)`. `ip_hash = SHA-256(ip + daily salt)`; raw IPs are never stored.
+- **M5b:** replay `inputLog` with `src/sim` and require the replayed `timeMs` and `points` to match exactly. Seeds are now random per run, so M5b first needs the client to send `seed` and the server to store it.
 
 ### 6.3 D1 schema
-See `worker/schema.sql`.
+See `worker/schema.sql`. Live DB upgrade from the Daily layout: `worker/migrations/0002_alltime.sql` (apply before deploying the new worker).
 
 ## 7. Storage keys (localStorage, prefix `upp:`)
-`upp:settings` (mute, volume, reducedMotion) · `upp:daily:<day>` (ranked result) · `upp:best:endless` · `upp:best:daily` (best daily run, practice included) · `upp:initials`
+`upp:settings` (mute, volume, reducedMotion) · `upp:best` (local best run) · `upp:pending` (last run, until sent) · `upp:initials`. Legacy `upp:best:endless` / `upp:best:daily` are read once as a fallback best.

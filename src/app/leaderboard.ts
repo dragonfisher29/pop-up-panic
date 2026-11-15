@@ -82,7 +82,6 @@ export function encodeInput(tick: number, i: Input): LogEntry {
 }
 
 export interface Submission {
-  day: string;
   initials: string;
   timeMs: number;
   points: number;
@@ -123,10 +122,10 @@ export interface Board {
   me: BoardRow | null;
 }
 
-export async function fetchBoard(day: string, me: string | null, f: Fetch = defaultFetch): Promise<Board | null> {
+/** The all-time top 10, plus `me`'s best row when it has one. */
+export async function fetchBoard(me: string | null, f: Fetch = defaultFetch): Promise<Board | null> {
   try {
-    const q = `day=${encodeURIComponent(day)}${me ? `&me=${encodeURIComponent(me)}` : ''}`;
-    const res = await f(`/api/scores?${q}`);
+    const res = await f(me ? `/api/scores?me=${encodeURIComponent(me)}` : '/api/scores');
     if (!res.ok) return null;
     const body = (await res.json()) as Partial<Board>;
     return Array.isArray(body.top) ? { top: body.top, me: body.me ?? null } : null;
