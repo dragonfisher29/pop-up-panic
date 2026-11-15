@@ -1,57 +1,121 @@
-# Pop-Up Panic
+<div align="center">
 
-> Close the pop-ups before PanicOS 97 runs out of memory.
+# 💾 Pop-Up Panic
 
-**Play it:** https://pop-up-panic.pages.dev
+### Your 90s computer is drowning in pop-ups. You have one mouse. Good luck.
 
-![Pop-Up Panic gameplay](docs/demo.gif)
-<!-- Record with ScreenToGif: ~10 s, 800 px wide, one run from calm desktop to crash screen. Save as docs/demo.gif. -->
+**[▶ Play it now: pop-up-panic.pages.dev](https://pop-up-panic.pages.dev)** · free · no install · no sign-up · runs in any browser
 
-A single-player arcade game in the browser about a cursed 90s desktop. Every pop-up eats RAM; hit 100% and PanicOS 97 crashes. Every run gets a fresh seed and a shot at the all-time top 10. Built in one weekend with Claude Code.
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-no_framework-646cff?logo=vite&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages_+_D1-f38020?logo=cloudflare&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-150_passing-2ea44f)
+![Bundle](https://img.shields.io/badge/JS-18_kB_gzipped-blueviolet)
 
-## How to play
-- **Close pop-ups** by clicking (or tapping) their X. Some of them fight back:
-  - **Fake X:** the big red X is a lie. Click the tiny "no thanks" link.
-  - **Runner:** slides away from your cursor. Corner it, or Force Quit it.
-  - **YOU WON!:** close it before its countdown ends, or it brings friends.
-  - **Virus scan:** closing it with X spawns two more. Press "Cancel scan".
-  - **Are you sure?:** a chain of confirms. Click through fast.
-  - **Toolbar installer:** leaves a toolbar that squeezes your desk. Click its tray icon to uninstall.
-  - **Antivirus:** the one friendly window. Leave it open; it closes things for you.
-- Every trick flashes a 300 ms warning first. If you saw it coming, it's fair.
-- **Panic tools:**
-  - `ALT+F4` (Force Quit): **Space** or **right-click**, or tap the button. Closes the window under the cursor. 3 charges, +1 every 45 s.
-  - `CTRL+ALT+DEL` (Task Manager): **Shift**, or tap the button. Closes every hostile window. Once per run.
-- **One mode:** a fresh random seed every run. Every run can go on the all-time top 10.
-- **Share:** your run as an emoji RAM strip, ready for WhatsApp or Discord.
-- Phones work in landscape. Taps work like clicks, and the runner dodges a 60 px circle (until it tires out) around your touch.
+<a href="https://pop-up-panic.pages.dev"><img src="public/og.png" alt="A retro desktop buried under joke pop-up windows, RAM at 78%" width="720"></a>
 
-## Tech notes
-- **Vite + TypeScript, no framework.** The desktop is one 1280×720 `div` scaled to fit the screen; windows are plain DOM nodes keyed by id.
-- **Deterministic simulation.** `src/sim/` is pure: integers only (px, milli-percent RAM, 60 Hz ticks), one seeded RNG, no DOM, no `Date`, no `Math.random`. `step(state, inputs)` never mutates its input. The same seed and inputs always give the same run, which is what makes a fair daily seed and replayable runs possible.
-- **Fixed-timestep loop.** `requestAnimationFrame` feeds an accumulator that steps the sim at exactly 60 Hz; the renderer only reads state. Effects (shake, puffs, trail, crash CRT) live in the app layer and respect reduced motion.
-- **Sound** is synthesized with WebAudio. There are no audio files.
-- **Leaderboard:** Cloudflare Pages Functions + D1. Each ranked run sends its full input log, so a run can be re-checked later. Initials go through a blocklist, and submits are rate-limited per day.
-- **Tests:** Vitest, 150+ tests, most of them on the sim (each pop-up type, the spawn director, determinism). A small balance bot (`npm run sim:bot`) plays 200 seeded runs to tune difficulty.
-- **Error guard:** if anything throws, you get a "Blue Screen of Panic" with a Reboot button instead of a dead page.
-- PanicOS 97 is an original fake OS. No real OS names, logos or UI were harmed.
+</div>
 
-## Run it locally (Windows, PowerShell)
-```powershell
-cd C:\Users\nadth\Documents\FUN\pop-up-panic
-powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+---
+
+**PanicOS 97** boots up clean. Ten seconds later an ad asks if you want beans. Thirty seconds in, a window starts *running away from your cursor*. By the two-minute mark, a fake antivirus is breeding, a toolbar is eating your screen, a "YOU WON!" box is counting down to disaster, and the RAM bar is screaming red.
+
+Hit 100% RAM for two seconds and the whole machine crashes. Then you hit **Retry**, because you *know* you can do better.
+
+> **DOWNLOAD MORE RAM** — 100% legal. 0% possible. Click now!
+>
+> **Webcam Detected** — Wow. Nice lamp.
+>
+> **Hamster Upgrade** — Your CPU is powered by 1 hamster. Upgrade to 2.
+>
+> *(real pop-ups from the game. There are dozens.)*
+
+## 🎮 Why it's fun
+
+- **Every pop-up is a joke, and most are traps.** Eight window types, each with its own dirty trick and its own counter:
+
+  | Pop-up | The trick | How you beat it |
+  |---|---|---|
+  | 📢 **Ad** | Just rude | Click the X |
+  | ❌ **Fake X** | The big X is a lie and spawns *another* ad | Find the tiny "no thanks" link |
+  | 🏃 **Runner** | Slides away from your cursor | Chase it until it runs out of breath |
+  | 🎁 **YOU WON!** | 3-second countdown, then 4 ads explode out | Close it before zero |
+  | ☣️ **Virus Scan** | Closing it spawns two more | Hit "Cancel scan" |
+  | ❓ **Are you sure?** | "Really sure?" "Final answer?" | Click through fast |
+  | 🔍 **Toolbar** | Installs a strip that shrinks your desktop | Uninstall it from the tray |
+  | 🛡️ **Antivirus** | The one *friendly* window: it closes things for you | Leave it alone! |
+
+- **Fair chaos.** Every trick flashes a 300 ms warning before it fires. If you lose, you saw it coming.
+- **Panic buttons.** `ALT+F4` force-quits the window under your cursor (3 charges). `CTRL+ALT+DEL` nukes every hostile window, once per run. Timing them is the whole game.
+- **Every run is new, every run counts.** You get a fresh random seed every time, and any run can land on the **all-time global top 10**, signed with your 3-letter arcade initials.
+- **Brag in emoji.** Share your run as a RAM strip that tells the whole story:
+  ```
+  Pop-Up Panic — 1:34 💾 87 closes 🔥x6
+  🟩🟩🟨🟨🟧🟥🟥💥
+  ```
+- **It *feels* like 1997.** Bevelled windows, a "Begin" button, CRT scanlines on the crash screen, screen shake as RAM climbs, and a modem-screech crash sound. All of it is synthesized live, with zero audio files.
+
+## 🛠️ Under the hood
+
+A small game with serious engineering behind it.
+
+- **A fully deterministic simulation.** The game rules (`src/sim/`) are pure TypeScript: integers only (pixels, milli-percent RAM, 60 Hz ticks), one seeded RNG, and no DOM, `Date` or `Math.random`. The same seed plus the same inputs gives the exact same run, every time, on every machine. Each submitted score carries its full input log, so any run can be replayed tick by tick.
+- **A fixed-timestep engine.** `requestAnimationFrame` feeds an accumulator that steps the sim at exactly 60 Hz. The renderer only *reads* state, so a slow frame never changes the outcome.
+- **No framework, tiny bundle.** The desktop is one 1280×720 `div` scaled to any screen, with windows as plain DOM nodes. The whole game ships as **~18 kB of gzipped JavaScript**.
+- **Tuned by a robot.** A balance bot (`npm run sim:bot`) plays 200 seeded runs headless. Its median survival is held at 90–140 s, so the game is hard but beatable.
+- **A serverless leaderboard.** Cloudflare Pages Functions + D1 (SQLite at the edge). Initials go through a rude-word blocklist on both client and server. Raw IPs are never stored (they're salted and hashed), and submissions are rate-limited.
+- **150 tests.** Vitest covers every pop-up type, the spawn director, determinism, the API and storage.
+- **It never shows a dead page.** If anything throws, you get a *Blue Screen of Panic* with a Reboot button.
+- **Playable on phones.** Landscape scaling, on-screen panic buttons and 44 px touch targets.
+
+## 🤖 Built in one weekend with Claude Code
+
+Pop-Up Panic went from idea to live, global-leaderboard game in a weekend, built with [Claude Code](https://claude.com/claude-code) working as an orchestrated team:
+
+- A **written game spec** and **milestone plan** (`docs/`) drove the work, one milestone per session.
+- **Test-driven development** for every rule: a failing test first, then the code.
+- **Specialist subagents**: a `sim-guardian` that rejects any change breaking determinism, a `milestone-reviewer` that must approve each milestone, and a `test-runner` that keeps logs out of the way.
+- **Hooks as guardrails**: sim tests re-run on every edit, and the owner's spec can't be changed by the AI.
+- **Real playtests**, turned straight into changes (the runner got nerfed, and the game went from Daily mode to one all-time board).
+
+The whole setup lives in [`CLAUDE.md`](CLAUDE.md) and [`claude-setup/`](claude-setup/) if you want to borrow it.
+
+## 🚀 Run it locally
+
+```bash
+npm install
 npm run dev
 ```
-`npm run dev` · `npm test` · `npm run test:sim` · `npm run typecheck` · `npm run build` · `npm run sim:bot` · `npm run dev:api` (local leaderboard on :8788, after a build)
 
-## What's in here
+| Command | What it does |
+|---|---|
+| `npm run dev` | Game on localhost:5173 |
+| `npm test` / `npm run test:sim` | All tests / only the simulation |
+| `npm run typecheck` · `npm run build` | Type-check, production build |
+| `npm run sim:bot` | 200-run balance report |
+| `npm run dev:api` | Local leaderboard on :8788 (after a build) |
+
+On Windows, `scripts/setup.ps1` installs everything in one go.
+
+## 📁 What's in here
+
 | Path | What |
 |---|---|
-| `src/sim/` | Pure, deterministic game simulation and its tests |
-| `src/app/` | Browser renderer, input, effects, sound, share text, leaderboard client |
-| `worker/`, `functions/` | Leaderboard API (Pages Functions) and the D1 schema |
+| `src/sim/` | The pure, deterministic game simulation and its tests |
+| `src/app/` | Renderer, input, effects, sound, share text, leaderboard client |
+| `worker/`, `functions/` | Leaderboard API (Pages Functions) and the D1 schema and migrations |
 | `docs/SPEC.md` | Game rules and numbers |
-| `docs/ARCHITECTURE.md` | Code layout, determinism rules, leaderboard API |
+| `docs/ARCHITECTURE.md` | Code layout, determinism rules, API |
 | `docs/PLAN.md` | The weekend plan, milestone by milestone |
-| `docs/COPY.md` | All the in-game jokes and text |
-| `CLAUDE.md`, `claude-setup/` | How Claude Code was set up to build it: the `/milestone` skill, subagents and hooks |
+| `docs/COPY.md` | Every in-game joke |
+| `CLAUDE.md`, `claude-setup/` | The Claude Code setup: skills, subagents, hooks |
+
+---
+
+<div align="center">
+
+PanicOS 97 is an original fake operating system. No real OS names, logos or UI were harmed.
+
+**[Can you survive two minutes? →](https://pop-up-panic.pages.dev)**
+
+</div>

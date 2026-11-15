@@ -1,7 +1,7 @@
 # Pop-Up Panic — Copy bank (absurd comedy)
 
 Rules: every line is original. No real brands, products or people. Keep each line short enough to fit the window.
-The renderer picks lines with the seeded RNG, so a daily run reads the same for everyone.
+The renderer picks lines from the run's seed, so a replayed run reads exactly the same.
 Format: **Title** — body — buttons.
 
 ## ad
