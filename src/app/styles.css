@@ -253,7 +253,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .kind-antivirus.tell .titlebar { animation: none; background: var(--crt); color: var(--ink); }
 /* runner out of stamina: grey title bar + "zzz", it no longer dodges */
 .kind-runner.tired .titlebar { background: #7b7b7b; }
-.kind-runner.tired .titlebar::after { content: 'zzz (out of breath)'; margin-left: auto; padding-right: 28px; font-style: italic; }
+/* the label sits between the title and the X, so the X never moves */
+.kind-runner.tired .titlebar::after { content: 'zzz'; order: 1; font-style: italic; }
+.kind-runner.tired .titlebar .x { order: 2; }
 .kind-antivirus.tell { animation: none; }
 @keyframes tell-flash { 50% { background: var(--alert); color: #fff; } }
 @keyframes wobble { 0%, 100% { translate: 0 0; } 33% { translate: -2px 1px; } 66% { translate: 2px -1px; } }

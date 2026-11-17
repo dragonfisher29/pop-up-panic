@@ -66,7 +66,7 @@ export const UNLOCKS = [
 export const KIND_WEIGHT = {
   ad: 8,
   fakeX: 10,
-  runner: 10,
+  runner: 5,
   prize: 10,
   virusScan: 12,
   confirm: 14,
@@ -98,8 +98,8 @@ export const FAKEX_SPAWNS = 1;
 
 export const RUNNER_RADIUS = 60;
 export const RUNNER_SPEED = 3;
-/** Ticks of actual fleeing before the runner tires and stops dodging (1.5 s = 270 px at speed 3). */
-export const RUNNER_STAMINA_TICKS = 90;
+/** Ticks of actual fleeing before the runner tires and stops dodging (0.5 s = 90 px at speed 3). */
+export const RUNNER_STAMINA_TICKS = 30;
 
 export const PRIZE_TIMER_TICKS = 3 * TICK_HZ;
 export const PRIZE_SPAWNS = 4;
