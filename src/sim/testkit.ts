@@ -8,7 +8,7 @@ const NEVER = 1_000_000_000;
 
 /** A game with the spawn director switched off, so tests control every window. */
 export function quiet(seed = 1): GameState {
-  return { ...createGame(seed), nextSpawnTick: NEVER, nextBurstTick: NEVER };
+  return { ...createGame(seed), nextSpawnTick: NEVER, nextBurstTick: NEVER, nextAntivirusTick: NEVER };
 }
 
 /** Adds a window of `kind` at (x, y) through the normal spawn path (kind init included). */

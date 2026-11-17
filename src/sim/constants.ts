@@ -76,9 +76,9 @@ export const KIND_WEIGHT = {
 export const NEWEST_BOOST_MULT = 2;
 export const NEWEST_BOOST_TICKS = 10 * TICK_HZ;
 
-/** Antivirus: rolls 1 in ANTIVIRUS_ODDS on each director spawn once unlocked. */
-export const ANTIVIRUS_UNLOCK_TICK = 20 * TICK_HZ;
-export const ANTIVIRUS_ODDS = 25;
+/** Antivirus (friendly): spawns on a fixed schedule, not at random. First at 0:20, then every 20 s, even if one is open. */
+export const ANTIVIRUS_FIRST_TICK = 20 * TICK_HZ;
+export const ANTIVIRUS_EVERY_TICKS = 20 * TICK_HZ;
 
 /** Bursts: every BURST_EVERY_TICKS, BURST_MIN..BURST_MAX windows, BURST_GAP_TICKS apart. */
 export const BURST_EVERY_TICKS = 25 * TICK_HZ;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ANTIVIRUS_UNLOCK_TICK,
+  ANTIVIRUS_EVERY_TICKS,
+  ANTIVIRUS_FIRST_TICK,
   BURST_EVERY_TICKS,
   BURST_MAX,
   BURST_MIN,
@@ -46,24 +47,16 @@ describe('pickKind', () => {
     }
   });
 
-  it('never picks antivirus before 20 s, and about 1 in 25 after', () => {
+  it('never picks antivirus at random (it has its own schedule)', () => {
     let rng = 99;
-    for (let i = 0; i < 500; i++) {
-      const r = pickKind(rng, ANTIVIRUS_UNLOCK_TICK - 1);
+    for (let i = 0; i < 5000; i++) {
+      const r = pickKind(rng, 120 * TICK_HZ);
       expect(r.kind).not.toBe('antivirus');
       rng = r.rng;
     }
-    let av = 0;
-    for (let i = 0; i < 5000; i++) {
-      const r = pickKind(rng, ANTIVIRUS_UNLOCK_TICK);
-      if (r.kind === 'antivirus') av++;
-      rng = r.rng;
-    }
-    expect(av).toBeGreaterThan(5000 / 25 / 2);
-    expect(av).toBeLessThan((5000 / 25) * 2);
   });
 
-  it('picks every unlocked type eventually', () => {
+  it('picks every unlocked hostile type eventually', () => {
     const seen = new Set<string>();
     let rng = 3;
     for (let i = 0; i < 2000; i++) {
@@ -71,7 +64,42 @@ describe('pickKind', () => {
       seen.add(r.kind);
       rng = r.rng;
     }
-    expect(seen.size).toBe(8);
+    expect(seen.size).toBe(7);
+  });
+});
+
+describe('antivirus schedule', () => {
+  /** Ticks at which an antivirus appeared, with the regular director switched off. */
+  function antivirusTicks(seed: number, ticks: number, keepOpen: boolean): number[] {
+    let s: GameState = { ...quiet(seed), nextAntivirusTick: ANTIVIRUS_FIRST_TICK };
+    const out: number[] = [];
+    let seen = 0;
+    for (let i = 0; i < ticks; i++) {
+      s = step(s, []);
+      const avs = s.windows.filter((w) => w.kind === 'antivirus');
+      if (avs.length > seen) out.push(s.tick);
+      seen = avs.length;
+      if (!keepOpen && avs.length > 0) s = { ...s, windows: s.windows.filter((w) => w.kind !== 'antivirus') };
+      if (!keepOpen) seen = 0;
+    }
+    return out;
+  }
+
+  it('spawns one every ANTIVIRUS_EVERY_TICKS from ANTIVIRUS_FIRST_TICK, whatever the seed', () => {
+    const expected = [0, 1, 2, 3].map((n) => ANTIVIRUS_FIRST_TICK + n * ANTIVIRUS_EVERY_TICKS);
+    const span = ANTIVIRUS_FIRST_TICK + 3 * ANTIVIRUS_EVERY_TICKS + 2;
+    expect(antivirusTicks(1, span, false).map((t) => t - 1)).toEqual(expected);
+    expect(antivirusTicks(42, span, false).map((t) => t - 1)).toEqual(expected);
+  });
+
+  it('spawns on schedule even while one is still open', () => {
+    const span = ANTIVIRUS_FIRST_TICK + ANTIVIRUS_EVERY_TICKS + 2;
+    expect(antivirusTicks(7, span, true)).toHaveLength(2);
+  });
+
+  it('is on in a real game: first helper at 20 s', () => {
+    expect(createGame(1).nextAntivirusTick).toBe(20 * TICK_HZ);
+    expect(ANTIVIRUS_EVERY_TICKS).toBe(20 * TICK_HZ);
   });
 });
 

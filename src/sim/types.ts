@@ -53,6 +53,8 @@ export interface GameState {
   nextSpawnTick: number;
   /** tick of the next burst */
   nextBurstTick: number;
+  /** tick of the next scheduled (friendly) antivirus */
+  nextAntivirusTick: number;
   /** windows still to spawn in the current burst */
   burstLeft: number;
   burstNextTick: number;

@@ -1,4 +1,5 @@
 import {
+  ANTIVIRUS_FIRST_TICK,
   ANTIVIRUS_PENALTY_RAM,
   BURST_EVERY_TICKS,
   DESKTOP_H,
@@ -36,6 +37,7 @@ export function createGame(seed: number): GameState {
     nextZ: 1,
     nextSpawnTick: FIRST_SPAWN_TICK,
     nextBurstTick: BURST_EVERY_TICKS,
+    nextAntivirusTick: ANTIVIRUS_FIRST_TICK,
     burstLeft: 0,
     burstNextTick: 0,
     closes: 0,

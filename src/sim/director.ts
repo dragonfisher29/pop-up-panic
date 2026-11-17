@@ -1,7 +1,6 @@
-// Spawn director (SPEC §5): eased interval, unlock waves, weighted picks, bursts, rare antivirus.
+// Spawn director (SPEC §5): eased interval, unlock waves, weighted picks, bursts, scheduled antivirus.
 import {
-  ANTIVIRUS_ODDS,
-  ANTIVIRUS_UNLOCK_TICK,
+  ANTIVIRUS_EVERY_TICKS,
   BURST_EVERY_TICKS,
   BURST_GAP_TICKS,
   BURST_MAX,
@@ -52,17 +51,11 @@ export function kindWeights(tick: number): { kind: HostileKind; weight: number }
   }));
 }
 
-/** Pure weighted pick. The antivirus rolls separately (1 in ANTIVIRUS_ODDS) once unlocked. */
+/** Pure weighted pick of a hostile kind. The antivirus is never picked here: it has its own schedule. */
 export function pickKind(rng: number, tick: number): { kind: PopupKind; rng: number } {
-  let state = rng;
-  if (tick >= ANTIVIRUS_UNLOCK_TICK) {
-    const roll = rngInt(state, 0, ANTIVIRUS_ODDS - 1);
-    state = roll.state;
-    if (roll.value === 0) return { kind: 'antivirus', rng: state };
-  }
   const weights = kindWeights(tick);
   const total = weights.reduce((sum, k) => sum + k.weight, 0);
-  const r = rngInt(state, 0, total - 1);
+  const r = rngInt(rng, 0, total - 1);
   let acc = 0;
   for (const k of weights) {
     acc += k.weight;
@@ -77,9 +70,13 @@ function spawnPicked(ctx: Ctx): void {
   ctx.spawn(p.kind);
 }
 
-/** Runs the director for this tick: regular spawns plus bursts. */
+/** Runs the director for this tick: the scheduled antivirus, regular spawns, and bursts. */
 export function directorTick(ctx: Ctx): void {
   const s = ctx.s;
+  if (s.tick >= s.nextAntivirusTick) {
+    ctx.spawn('antivirus');
+    s.nextAntivirusTick += ANTIVIRUS_EVERY_TICKS;
+  }
   if (s.tick >= s.nextSpawnTick) {
     spawnPicked(ctx);
     s.nextSpawnTick = s.tick + spawnIntervalAt(s.tick);
