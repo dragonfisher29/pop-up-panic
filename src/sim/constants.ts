@@ -98,8 +98,8 @@ export const FAKEX_SPAWNS = 1;
 
 export const RUNNER_RADIUS = 60;
 export const RUNNER_SPEED = 3;
-/** Ticks of actual fleeing before the runner tires and stops dodging (0.5 s = 90 px at speed 3). */
-export const RUNNER_STAMINA_TICKS = 30;
+/** Ticks of actual fleeing before the runner tires and stops dodging (0.35 s = 63 px at speed 3). */
+export const RUNNER_STAMINA_TICKS = 21;
 
 export const PRIZE_TIMER_TICKS = 3 * TICK_HZ;
 export const PRIZE_SPAWNS = 4;
